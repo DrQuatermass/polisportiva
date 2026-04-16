@@ -3,6 +3,7 @@
 __pycache__/
 db.sqlite3
 *.sqlite3
+*-dump.json
 staticfiles/
 media/
 
