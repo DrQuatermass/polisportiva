@@ -80,6 +80,7 @@ CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', False)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 SITE_URL = 'https://polisportivasanmarinese.it'  # usato per condivisione social
+GOOGLE_ANALYTICS_ID = env('GOOGLE_ANALYTICS_ID')
 
 DEFAULT_GOOGLE_CALENDAR_ICS_URL = (
     'https://calendar.google.com/calendar/ical/'
@@ -130,6 +131,7 @@ TEMPLATES = [
                 'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'home.context_processors.analytics',
             ],
         },
     },

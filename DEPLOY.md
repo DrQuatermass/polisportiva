@@ -93,6 +93,7 @@ EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
 CONTACT_EMAIL=polisportivasanmarinese@gmail.com
+GOOGLE_ANALYTICS_ID=
 PAYPAL_MODE=sandbox
 PAYPAL_CLIENT_ID=
 ```
