@@ -308,6 +308,7 @@ sudo nano /etc/apache2/sites-available/polisportiva.conf
     # Header di sicurezza
     Header always set X-Content-Type-Options nosniff
     Header always set X-Frame-Options DENY
+    RequestHeader set X-Forwarded-Proto "http"
 
     ErrorLog ${APACHE_LOG_DIR}/polisportiva_error.log
     CustomLog ${APACHE_LOG_DIR}/polisportiva_access.log combined
@@ -342,6 +343,7 @@ sudo tee /etc/apache2/sites-available/polisportiva.conf >/dev/null <<'EOF'
 
     Header always set X-Content-Type-Options nosniff
     Header always set X-Frame-Options DENY
+    RequestHeader set X-Forwarded-Proto "http"
 
     ErrorLog ${APACHE_LOG_DIR}/polisportiva_error.log
     CustomLog ${APACHE_LOG_DIR}/polisportiva_access.log combined
@@ -392,6 +394,20 @@ sudo certbot --apache -d polisportivasanmarinese.it -d www.polisportivasanmarine
 # Certbot modifica automaticamente il conf Apache e aggiunge il redirect HTTP→HTTPS
 # Verifica rinnovo automatico
 sudo certbot renew --dry-run
+```
+
+Dopo Certbot, nel virtualhost HTTPS `*:443` aggiungi dentro il blocco `<VirtualHost>`:
+
+```apache
+RequestHeader set X-Forwarded-Proto "https"
+```
+
+Poi verifica e ricarica:
+
+```bash
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+sudo systemctl restart polisportiva-gunicorn.service
 ```
 
 Il certificato si rinnova automaticamente ogni 90 giorni.
