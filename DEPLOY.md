@@ -508,6 +508,7 @@ python manage.py dumpdata \
   --natural-primary \
   --exclude contenttypes \
   --exclude auth.permission \
+  --exclude admin.logentry \
   --indent 2 > /var/www/polisportiva/sqlite-dump.json
 ```
 
