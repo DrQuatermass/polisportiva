@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Iscrizioni chiuse — {{ event.title }}{% endblock %}
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 text-center">
+        <i class="bi bi-lock-fill text-secondary" style="font-size:3rem;"></i>
+        <h1 class="fw-bold mt-3 mb-2">Iscrizioni chiuse</h1>
+        <p class="text-muted mb-4">Le iscrizioni per <strong>{{ event.title }}</strong> non sono al momento disponibili.</p>
+        <a href="{% url 'event_detail' event.slug %}" class="btn btn-outline-danger">
+          <i class="bi bi-arrow-left me-1"></i>Torna all'evento
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

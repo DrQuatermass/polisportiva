@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Sponsor – Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <h1 class="section-title text-center mb-2">I nostri sponsor</h1>
+    <p class="text-center text-muted mb-5">Grazie a chi sostiene la nostra associazione.</p>
+
+    {% if sponsors %}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+      {% for sponsor in sponsors %}
+      <div class="col">
+        <a href="{{ sponsor.website }}" target="_blank" rel="noopener noreferrer"
+           class="sponsor-card d-flex align-items-center justify-content-center p-3 bg-white border rounded shadow-sm h-100"
+           title="{{ sponsor.name }}">
+          <img src="{{ sponsor.logo.url }}" alt="{{ sponsor.name }}" class="sponsor-logo img-fluid">
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center text-muted">Nessuno sponsor al momento.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

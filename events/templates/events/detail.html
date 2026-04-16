@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ event.title }} — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <a href="{% url 'events_list' %}" class="text-white-75 text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Tutti gli eventi
+    </a>
+    <h1 class="fw-bold text-white mt-2 mb-2">{{ event.title }}</h1>
+    <div class="d-flex flex-wrap gap-3 text-white-75 small">
+      <span><i class="bi bi-calendar3 me-1"></i>{{ event.date|date:"l d F Y" }}</span>
+      <span><i class="bi bi-clock me-1"></i>{{ event.date|date:"H:i" }}</span>
+      <span><i class="bi bi-geo-alt me-1"></i>{{ event.location }}</span>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+
+        {% if event.image %}
+        <img src="{{ event.image.url }}" alt="{{ event.title }}"
+             class="img-fluid rounded mb-4 w-100" style="max-height:450px;object-fit:cover;">
+        {% endif %}
+
+        <div class="card border-0 shadow-sm p-4 mb-4">
+          <div class="row g-3 text-center">
+            <div class="col-4">
+              <i class="bi bi-calendar-event fs-3 text-danger d-block mb-1"></i>
+              <p class="small text-muted mb-0">Data</p>
+              <p class="fw-semibold mb-0">{{ event.date|date:"d/m/Y" }}</p>
+            </div>
+            <div class="col-4">
+              <i class="bi bi-clock fs-3 text-danger d-block mb-1"></i>
+              <p class="small text-muted mb-0">Orario</p>
+              <p class="fw-semibold mb-0">{{ event.date|date:"H:i" }}</p>
+            </div>
+            <div class="col-4">
+              <i class="bi bi-geo-alt fs-3 text-danger d-block mb-1"></i>
+              <p class="small text-muted mb-0">Luogo</p>
+              <p class="fw-semibold mb-0">{{ event.location }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="fs-5 lh-lg mb-4">
+          {{ event.description|safe }}
+        </div>
+
+        {% if event.registration_enabled %}
+        <hr class="my-4">
+
+        {% if event.registrations_open %}
+        <div class="card border-0 shadow-sm p-4 mb-4" id="iscrizione">
+          <h2 class="fw-bold mb-1" style="font-size:1.4rem;">
+            <i class="bi bi-pencil-square text-danger me-2"></i>Iscriviti all'evento
+          </h2>
+
+          {% if event.registration_notes %}
+          <div class="alert alert-info mt-3 mb-3">{{ event.registration_notes }}</div>
+          {% endif %}
+
+          <div class="d-flex flex-wrap gap-3 mb-4 text-muted small">
+            {% if event.max_registrations %}
+            <span><i class="bi bi-people me-1"></i>Posti: {{ event.registrations_count }} / {{ event.max_registrations }}</span>
+            {% endif %}
+            {% if event.registration_deadline %}
+            <span><i class="bi bi-calendar-x me-1"></i>Scadenza: {{ event.registration_deadline|date:"d/m/Y H:i" }}</span>
+            {% endif %}
+            {% if event.is_paid %}
+            <span class="fw-semibold text-dark"><i class="bi bi-credit-card me-1"></i>Quota: € {{ event.registration_price }}</span>
+            {% else %}
+            <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Iscrizione gratuita</span>
+            {% endif %}
+          </div>
+
+          {% if form_error %}
+          <div class="alert alert-danger">Correggi gli errori nel modulo prima di procedere.</div>
+          {% endif %}
+
+          <form method="post" action="{% url 'event_register' event.slug %}" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label fw-semibold" for="id_reg_email">
+                {{ reg_form.reg_email.label }} <span class="text-danger">*</span>
+              </label>
+              {{ reg_form.reg_email }}
+              {% if reg_form.reg_email.help_text %}<div class="form-text">{{ reg_form.reg_email.help_text }}</div>{% endif %}
+              {% if reg_form.reg_email.errors %}<div class="invalid-feedback d-block">{{ reg_form.reg_email.errors.0 }}</div>{% endif %}
+            </div>
+
+            {% for field in reg_form %}
+              {% if field.html_name != "reg_email" %}
+              <div class="mb-3">
+                {% if field.field.widget.input_type == "checkbox" %}
+                <div class="form-check">
+                  {{ field }}
+                  <label class="form-check-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                </div>
+                {% elif field.field.widget.input_type == "radio" %}
+                <label class="form-label fw-semibold">
+                  {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+                </label>
+                {% for choice in field %}
+                <div class="form-check">
+                  {{ choice.tag }}
+                  <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                </div>
+                {% endfor %}
+                {% else %}
+                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
+                  {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% endif %}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+              </div>
+              {% endif %}
+            {% endfor %}
+
+            <div class="mt-4">
+              {% if event.is_paid %}
+              <button type="submit" class="btn btn-danger btn-lg px-5">
+                <i class="bi bi-arrow-right-circle me-2"></i>Continua al pagamento — € {{ event.registration_price }}
+              </button>
+              {% else %}
+              <button type="submit" class="btn btn-danger btn-lg px-5">
+                <i class="bi bi-check-circle me-2"></i>Invia iscrizione
+              </button>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+
+        {% else %}
+        <div class="alert alert-secondary d-flex align-items-center gap-3">
+          <i class="bi bi-lock fs-4"></i>
+          <div>
+            <strong>Iscrizioni chiuse.</strong>
+            {% if event.registration_deadline %} Scadenza: {{ event.registration_deadline|date:"d/m/Y" }}.{% endif %}
+            {% if event.max_registrations and event.registrations_count >= event.max_registrations %} Posti esauriti.{% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <hr class="my-4">
+        <a href="{% url 'events_list' %}" class="btn btn-outline-danger">
+          <i class="bi bi-arrow-left me-1"></i>Torna agli eventi
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

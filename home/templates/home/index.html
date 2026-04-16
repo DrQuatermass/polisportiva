@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Polisportiva Sanmarinese — Home{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="hero d-flex align-items-center">
+  <div class="hero-overlay"></div>
+  <div class="container position-relative text-white text-center">
+    <h1 class="display-3 fw-bold mb-3">Polisportiva Sanmarinese<br>ASD-APS</h1>
+    <p class="lead mb-4">Scuola di ciclismo, squadra agonistica e impegno sociale a San Marino di Carpi.</p>
+    <a href="{% url 'chi_siamo' %}" class="btn btn-danger btn-lg px-5 me-2">Scopri la societa</a>
+    <a href="{% url 'contatti' %}" class="btn btn-outline-light btn-lg px-5">Contattaci</a>
+  </div>
+</section>
+
+<!-- Ultime news -->
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-title mb-0">Ultime notizie</h2>
+      <a href="{% url 'news_list' %}" class="btn btn-outline-danger btn-sm">Tutte le notizie</a>
+    </div>
+
+    {% if latest_news %}
+    <div class="row g-4">
+      {% for item in latest_news %}
+      <div class="col-md-4">
+        <div class="card h-100 card-hover border-0 shadow-sm">
+          {% if item.image %}
+          <div class="card-media">
+            <img src="{{ item.image.url }}" class="card-img-top card-media-img" alt="{{ item.title }}" loading="lazy">
+          </div>
+          {% else %}
+          <div class="card-media card-img-placeholder d-flex align-items-center justify-content-center bg-secondary">
+            <i class="bi bi-newspaper text-white fs-1"></i>
+          </div>
+          {% endif %}
+          <div class="card-body">
+            <p class="text-muted small mb-1">
+              <i class="bi bi-calendar3 me-1"></i>{{ item.created_at|date:"d F Y" }}
+            </p>
+            <h3 class="card-title fw-semibold fs-6">{{ item.title }}</h3>
+            <p class="card-text text-muted small">{{ item.content|truncatewords:20 }}</p>
+          </div>
+          <div class="card-footer bg-transparent border-0 pb-3">
+            <a href="{% url 'news_detail' item.slug %}" class="btn btn-sm btn-danger">Leggi tutto</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-newspaper fs-1 d-block mb-3"></i>
+      <p>Nessuna notizia disponibile al momento.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+
+<!-- Prossimi eventi -->
+<section class="py-5 bg-light border-top">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="section-title mb-0">Prossimi eventi</h2>
+      <a href="{% url 'events_list' %}" class="btn btn-outline-danger btn-sm">Tutti gli eventi</a>
+    </div>
+    {% if upcoming_events %}
+    <div class="row g-4">
+      {% for event in upcoming_events %}
+      <div class="col-md-4">
+        <a href="{% url 'event_detail' event.slug %}" class="text-decoration-none">
+          <div class="card h-100 card-hover border-0 shadow-sm overflow-hidden">
+            {% if event.image %}
+            <div class="card-media">
+              <img src="{{ event.image.url }}" class="card-img-top card-media-img" alt="{{ event.title }}" loading="lazy">
+            </div>
+            {% else %}
+            <div class="card-media d-flex align-items-center justify-content-center bg-dark">
+              <i class="bi bi-calendar-event text-white fs-1"></i>
+            </div>
+            {% endif %}
+            <div class="card-body p-4">
+              <h5 class="fw-semibold text-dark mb-2">{{ event.title }}</h5>
+              <p class="text-muted small mb-0">{{ event.description|striptags|truncatewords:20 }}</p>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+      <p>Nessun evento in programma al momento.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Call to action -->
+<section class="cta-section py-5">
+  <div class="container text-center text-white">
+    <h2 class="fw-bold mb-3">Cresci con noi, in bici e nella comunita</h2>
+    <p class="lead mb-4 text-white opacity-90">Dai 5 ai 14 anni accompagniamo ragazze e ragazzi nel ciclismo, promuovendo tecnica, rispetto delle regole e passione sportiva.</p>
+    <a href="{% url 'contatti' %}" class="btn btn-light btn-lg px-5 fw-semibold me-3">Contattaci</a>
+    <a href="{% url 'ciclismo' %}" class="btn btn-outline-light btn-lg px-5 fw-semibold">Il ciclismo</a>
+  </div>
+</section>
+{% endblock %}

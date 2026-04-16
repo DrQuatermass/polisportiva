@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ doc.title }} — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <a href="{% url 'documents_list' %}" class="text-white-75 text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Tutti i documenti
+    </a>
+    <p class="text-white-50 small mt-2 mb-1">{{ doc.get_category_display }}</p>
+    <h1 class="fw-bold text-white mb-0">{{ doc.title }}</h1>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+
+        {% if doc.description %}
+        <p class="lead text-muted mb-4">{{ doc.description }}</p>
+        {% endif %}
+
+        {% if doc.has_content %}
+        <div class="document-content lh-lg">
+          {{ doc.content|safe }}
+        </div>
+        {% endif %}
+
+        {% if doc.has_file %}
+        <div class="mt-5 p-4 rounded border border-danger-subtle bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-file-earmark-pdf-fill fs-2 text-danger flex-shrink-0"></i>
+          <div>
+            <p class="fw-semibold mb-1">Versione PDF</p>
+            <p class="text-muted small mb-2">Scarica il documento in formato PDF.</p>
+            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-danger">
+              <i class="bi bi-download me-1"></i>Scarica PDF
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        <hr class="my-5">
+        <a href="{% url 'documents_list' %}" class="btn btn-outline-danger">
+          <i class="bi bi-arrow-left me-1"></i>Torna ai documenti
+        </a>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

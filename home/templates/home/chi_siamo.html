@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chi siamo — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header page-header--chisiamo py-5">
+  <div class="container">
+    <h1 class="fw-bold text-white mb-1">Chi siamo</h1>
+    <p class="text-white-75 mb-0">Dal 1948, sport, comunità e passione per il ciclismo</p>
+  </div>
+</section>
+
+<!-- Storia -->
+<section class="py-5">
+  <div class="container">
+    <div class="row align-items-center g-5 mb-5">
+      <div class="col-lg-6">
+        <h2 class="section-title mb-4">La nostra storia</h2>
+        <p class="fs-5 text-muted lh-lg mb-4">
+          Fondata nel primo dopoguerra, la Polisportiva Sanmarinese ASD-APS è da oltre 75 anni un punto di riferimento per lo sport e la comunità di San Marino di Carpi. Da realtà multisportiva a scuola di ciclismo riconosciuta dal CONI e dalla FCI, il nostro percorso è fatto di passione, continuità e radicamento nel territorio.
+        </p>
+        <div class="vstack gap-3">
+          <div class="p-3 rounded border bg-light">
+            <p class="fw-bold text-dark mb-1">1948 — La fondazione</p>
+            <p class="text-muted small mb-0">Nasce nel primo dopoguerra e aderisce alla UISP. Negli anni promuove calcio (FIGC), tennis, bocce, ciclismo e pallavolo (FIPAV).</p>
+          </div>
+          <div class="p-3 rounded border bg-light">
+            <p class="fw-bold text-dark mb-1">1982 — Il ciclismo al centro</p>
+            <p class="text-muted small mb-0">Formalizza l'affiliazione alla Federazione Ciclistica Italiana e comincia a organizzare in proprio le gare ciclistiche, mantenendo attività anche nel calcio e nella pallavolo.</p>
+          </div>
+          <div class="p-3 rounded border bg-light">
+            <p class="fw-bold text-dark mb-1">2014 — La scelta del futuro</p>
+            <p class="text-muted small mb-0">Per qualificare l'offerta formativa, le discipline del calcio e della pallavolo vengono cedute ad altre società: il progetto sportivo si concentra interamente sul ciclismo.</p>
+          </div>
+          <div class="p-3 rounded border bg-light">
+            <p class="fw-bold text-dark mb-1">2016 — Scuola di ciclismo FCI-CONI</p>
+            <p class="text-muted small mb-0">Riconosciuta dal CONI e dalla FCI come Scuola di Ciclismo, intitolata a <strong>Cristian Castagna</strong>, atleta della società prematuramente scomparso.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="rounded overflow-hidden shadow bg-light" style="height:380px;">
+          <picture>
+            <source srcset="{% static 'images/murale.webp' %}" type="image/webp">
+            <img src="{% static 'images/murale.png' %}" alt="Murale celebrativo dell'attività ciclistica — opera di Neko (Fabio Valentini), gennaio 2026" class="w-100 h-100 d-block" style="object-fit:contain;" loading="lazy">
+          </picture>
+        </div>
+        <p class="text-muted small text-center mt-2"><em>Murale celebrativo dell'attività ciclistica, realizzato nel gennaio 2026 dall'artista Fabio Valentini (Neko)</em></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Offerta sportiva -->
+<section class="py-5 bg-light border-top">
+  <div class="container">
+    <h2 class="section-title mb-2">L'offerta sportiva</h2>
+    <p class="text-muted mb-5">Tre percorsi per avvicinarsi al ciclismo, dalla prima pedalata fino alle competizioni.</p>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="p-4 bg-white rounded border h-100">
+          <i class="bi bi-bicycle fs-1 mb-3 d-block" style="color:var(--red);"></i>
+          <h5 class="fw-bold">Scuola di ciclismo</h5>
+          <p class="text-muted small mb-0">Attività per ragazze e ragazzi dai <strong>5 ai 14 anni</strong>, in spazi protetti con istruttori qualificati FCI. Un percorso pensato per avvicinarsi alla bicicletta in sicurezza, imparando le basi tecniche e i valori dello sport.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-4 bg-white rounded border h-100">
+          <i class="bi bi-trophy fs-1 mb-3 d-block" style="color:var(--red);"></i>
+          <h5 class="fw-bold">Squadra agonistica</h5>
+          <p class="text-muted small mb-0">Percorso di avvicinamento al ciclismo competitivo per giovani atleti dai <strong>7 ai 12 anni</strong>. Un ambiente sano e stimolante in cui imparare il rispetto delle regole, la determinazione e lo spirito di squadra.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-4 bg-white rounded border h-100">
+          <i class="bi bi-geo-alt fs-1 mb-3 d-block" style="color:var(--red);"></i>
+          <h5 class="fw-bold">Squadra amatori</h5>
+          <p class="text-muted small mb-0">Cicloturismo e promozione della bicicletta come mezzo di mobilità sostenibile e benessere. Una comunità di appassionati sempre in movimento, visibile sulle strade da marzo a ottobre.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Non solo sport -->
+<section class="py-5 border-top">
+  <div class="container">
+    <div class="row g-5 align-items-start">
+      <div class="col-lg-5">
+        <h2 class="section-title mb-4">Non solo sport</h2>
+        <p class="text-muted lh-lg mb-3">
+          La Polisportiva Sanmarinese è anche un'<strong>Associazione di Promozione Sociale (APS)</strong>. Le nostre strutture sono aperte a tutta la comunità, con iniziative che valorizzano il territorio e promuovono l'inclusione.
+        </p>
+        <p class="text-muted lh-lg mb-0">
+          Nel 2012, durante il terremoto, la nostra sede si è trasformata in un punto di riferimento per il quartiere, fornendo pasti e supporto a chi era costretto lontano da casa. Un esempio concreto di cosa significa essere una comunità.
+        </p>
+      </div>
+      <div class="col-lg-7">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="p-4 rounded border h-100">
+              <i class="bi bi-people-fill fs-2 mb-3 d-block text-danger"></i>
+              <h6 class="fw-bold">Giovani</h6>
+              <p class="text-muted small mb-0">Campo giochi estivo e attività educative per i più piccoli.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-4 rounded border h-100">
+              <i class="bi bi-person-heart fs-2 mb-3 d-block text-danger"></i>
+              <h6 class="fw-bold">Anziani</h6>
+              <p class="text-muted small mb-0">Attività ricreative e di socializzazione per contrastare l'isolamento.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-4 rounded border h-100">
+              <i class="bi bi-globe fs-2 mb-3 d-block text-danger"></i>
+              <h6 class="fw-bold">Inclusione</h6>
+              <p class="text-muted small mb-0">Spazi disponibili per attività culturali rivolte a disabili e stranieri.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-4 rounded border h-100">
+              <i class="bi bi-cup-hot fs-2 mb-3 d-block text-danger"></i>
+              <h6 class="fw-bold">Corsi di cucina</h6>
+              <p class="text-muted small mb-0">Un momento di condivisione e convivialità aperto a tutti.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- La sede -->
+<section class="py-5 bg-light border-top">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <h2 class="section-title mb-4">La sede</h2>
+        <p class="text-muted lh-lg mb-3">
+          Ci troviamo in <strong>Via Traversa San Lorenzo 1/A, San Marino di Carpi (MO)</strong>. Un grande spazio immerso nel verde, con circa <strong>40.000 mq</strong> dedicati alle attività all'aperto.
+        </p>
+        <p class="text-muted lh-lg mb-4">
+          La struttura comprende palestra, sale ricreative, bar, cucina, parcheggio e un percorso fuoristrada per mountain bike e ciclocross.
+        </p>
+        <a href="https://maps.google.com/?q=Via+Traversa+San+Lorenzo+1/A,+Carpi+MO" target="_blank" rel="noopener" class="btn btn-outline-danger">
+          <i class="bi bi-geo-alt me-2"></i>Apri in Google Maps
+        </a>
+      </div>
+      <div class="col-lg-5">
+        <div class="p-4 rounded border bg-white text-center">
+          <i class="bi bi-house-fill fs-1 text-danger mb-3 d-block"></i>
+          <p class="fw-bold mb-1">Via Traversa San Lorenzo, 1/A</p>
+          <p class="text-muted small mb-0">41012 Carpi (MO) — loc. San Marino</p>
+          <hr class="my-3">
+          <div class="row g-2 text-start">
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">Palestra</span></div>
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">Bar e cucina</span></div>
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">Parcheggio</span></div>
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">Percorso MTB</span></div>
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">Sale ricreative</span></div>
+            <div class="col-6"><i class="bi bi-check-circle text-success me-1"></i><span class="small">40.000 mq verde</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Il consiglio -->
+<section class="py-5 border-top">
+  <div class="container">
+    <h2 class="section-title mb-2">Il consiglio direttivo</h2>
+    <p class="text-muted mb-5">Le persone che guidano e animano la Polisportiva Sanmarinese.</p>
+    <div class="row g-3">
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Roberto Rossi</p>
+          <p class="text-danger small fw-semibold mb-1">Presidente — Direttore di Corsa Internazionale FCI</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Alessandro Ferraresi</p>
+          <p class="text-danger small fw-semibold mb-1">Vice Presidente</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Ones Benzi</p>
+          <p class="text-danger small fw-semibold mb-1">Vice Presidente — Tecnico Allenatore TA2 FCI</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Norberto Testa</p>
+          <p class="text-danger small fw-semibold mb-1">Tecnico Allenatore TA2 FCI — Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Ottavio Gibertoni</p>
+          <p class="text-danger small fw-semibold mb-1">Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Luca Ronchetti</p>
+          <p class="text-danger small fw-semibold mb-1">Tecnico Istruttore TI1 FCI — Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Jessica Bisi</p>
+          <p class="text-danger small fw-semibold mb-1">Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Dino Muzzioli</p>
+          <p class="text-danger small fw-semibold mb-1">Ex Professionista — Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Simona Muzzioli</p>
+          <p class="text-danger small fw-semibold mb-1">Campionessa Italiana 1990-91 (pista) e 1994 (strada) — Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Claudio Ghizzoni</p>
+          <p class="text-danger small fw-semibold mb-1">Ciclista amatore MTB — Consigliere</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-4 rounded border bg-white h-100">
+          <p class="fw-bold text-dark mb-0">Maurizio Marchi</p>
+          <p class="text-danger small fw-semibold mb-1">Ciclista amatore MTB — Consigliere</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Affiliazioni -->
+<section class="py-5 bg-light border-top">
+  <div class="container">
+    <h2 class="section-title mb-2">Affiliazioni e adesioni</h2>
+    <p class="text-muted mb-5">Il nostro percorso associativo si fonda su affiliazioni solide e riconoscimenti istituzionali.</p>
+    <div class="row g-4 align-items-center justify-content-center">
+      <div class="col-6 col-md-3 text-center">
+        <div class="p-4 bg-white rounded shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+          <img src="{{ MEDIA_URL }}sponsors/ARCI.svg" alt="ARCI" class="img-fluid mb-3" style="max-height:80px;object-fit:contain;" loading="lazy">
+          <p class="fw-semibold small mb-1 text-dark">ARCI</p>
+          <p class="text-muted small mb-0">dal 1965</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="p-4 bg-white rounded shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+          <img src="{{ MEDIA_URL }}sponsors/UISP.svg" alt="UISP" class="img-fluid mb-3" style="max-height:80px;object-fit:contain;" loading="lazy">
+          <p class="fw-semibold small mb-1 text-dark">UISP</p>
+          <p class="text-muted small mb-0">dal 1968</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="p-4 bg-white rounded shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+          <img src="{{ MEDIA_URL }}sponsors/FCI.svg" alt="Federazione Ciclistica Italiana" class="img-fluid mb-3" style="max-height:80px;object-fit:contain;" loading="lazy">
+          <p class="fw-semibold small mb-1 text-dark">FCI</p>
+          <p class="text-muted small mb-0">dal 1982</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 text-center">
+        <div class="p-4 bg-white rounded shadow-sm h-100 d-flex flex-column align-items-center justify-content-center">
+          <i class="bi bi-award-fill text-danger mb-3 d-block" style="font-size:3rem;"></i>
+          <p class="fw-semibold small mb-1 text-dark">CONI — Scuola FCI</p>
+          <p class="text-muted small mb-0">dal 2016</p>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted small mt-4 mb-0">
+      <i class="bi bi-leaf me-1 text-success"></i>Dal <strong>2024</strong> aderiamo alla <strong>Carta Etica dello Sport</strong> della Regione Emilia-Romagna. Tutte le nostre iniziative rispettano le indicazioni regionali per la tutela dell'ambiente.
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-5 bg-light border-top">
+  <div class="container text-center">
+    <h2 class="fw-bold mb-3">Vuoi unirti a noi?</h2>
+    <p class="text-muted mb-4">Contattaci per informazioni su tesseramento, attività e sponsor.</p>
+    <a href="{% url 'contatti' %}" class="btn btn-danger btn-lg px-5">Contattaci</a>
+  </div>
+</section>
+
+{% endblock %}

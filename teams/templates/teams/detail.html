@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ team.name }} — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <a href="{% url 'teams_list' %}" class="text-white-75 text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Tutte le squadre
+    </a>
+    <h1 class="fw-bold text-white mt-2 mb-1">{{ team.name }}</h1>
+    <span class="badge fs-6" style="background:var(--blue);">{{ team.category }}</span>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        {% if team.image %}
+        <img src="{{ team.image.url }}" alt="{{ team.name }}" class="img-fluid rounded mb-4 w-100" style="max-height:400px;object-fit:cover;">
+        {% endif %}
+
+        <div class="fs-5 lh-lg mb-4">
+          {{ team.description|linebreaks }}
+        </div>
+
+        {% if team.regulation %}
+        <div class="p-4 rounded border border-danger-subtle bg-light d-flex align-items-center gap-3 mb-4">
+          <i class="bi bi-file-earmark-pdf-fill fs-2 text-danger flex-shrink-0"></i>
+          <div>
+            <p class="fw-semibold mb-1">Regolamento {{ team.name }}</p>
+            <p class="text-muted small mb-2">Scarica il regolamento ufficiale della squadra in formato PDF.</p>
+            <a href="{{ team.regulation.url }}" target="_blank" class="btn btn-sm btn-danger">
+              <i class="bi bi-download me-1"></i>Scarica regolamento
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        <hr class="my-4">
+        <a href="{% url 'teams_list' %}" class="btn btn-outline-danger">
+          <i class="bi bi-arrow-left me-1"></i>Torna alle squadre
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

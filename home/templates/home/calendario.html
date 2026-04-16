@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Calendario – Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <h1 class="section-title text-center mb-2">Calendario</h1>
+    <p class="text-center text-muted mb-4">Disponibilita sale in tempo reale.</p>
+
+    <div class="calendar-note alert alert-light border mb-3" role="note">
+      <a href="{% url 'contatti' %}">Contattaci</a> per prenotare.
+      <div class="calendar-legend mt-2" aria-label="Legenda ambienti">
+        <span class="calendar-room-badge calendar-room-palestra">Palestra</span>
+        <span class="calendar-room-badge calendar-room-saletta">Saletta</span>
+        <span class="calendar-room-badge calendar-room-salone">Salone</span>
+        <span class="calendar-room-badge calendar-room-campo-basket">Campo Basket</span>
+        <span class="calendar-room-badge calendar-room-parco">Parco</span>
+      </div>
+    </div>
+
+    {% if calendar_error %}
+    <div class="alert alert-warning" role="alert">{{ calendar_error }}</div>
+    {% endif %}
+
+    {% if request.GET.debug_ics == '1' %}
+    <div class="alert alert-info" role="note">
+      <div><strong>Debug ICS:</strong> {{ calendar_debug.occupied_days_in_month }} giorni occupati nel mese.</div>
+      <div class="small text-muted">URL: {{ calendar_debug.ics_url }}</div>
+      {% if calendar_debug.occupied_days %}
+      <ul class="small mb-0 mt-2">
+        {% for day in calendar_debug.occupied_days %}
+        <li>
+          {{ day.date|date:"d/m/Y" }}:
+          {% for slot in day.slots %}
+            {{ slot.time }} ({% for room in slot.rooms %}{{ room.label }}{% if not forloop.last %}, {% endif %}{% endfor %}){% if not forloop.last %}; {% endif %}
+          {% endfor %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="calendar-shell bg-white border rounded shadow-sm">
+      <div class="calendar-toolbar d-flex align-items-center justify-content-between p-3 border-bottom">
+        <a href="?month={{ prev_month }}" class="btn btn-sm btn-outline-secondary">&larr; Mese precedente</a>
+        <strong class="calendar-month-label">{{ month_label }}</strong>
+        <a href="?month={{ next_month }}" class="btn btn-sm btn-outline-secondary">Mese successivo &rarr;</a>
+      </div>
+
+      <div class="calendar-grid-head">
+        {% for day_name in weekday_labels %}
+        <div class="calendar-head-cell">{{ day_name }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="calendar-grid-body">
+        {% for week in month_weeks %}
+          {% for day in week %}
+          <div class="calendar-day-cell{% if not day.in_month %} is-outside{% endif %}{% if day.occupied %} is-occupied{% endif %}">
+            <div class="calendar-day-top">
+              <span class="calendar-day-number">{{ day.date|date:"j" }}</span>
+              {% if day.occupied %}
+              <span class="badge text-bg-secondary">Occupato</span>
+              {% endif %}
+            </div>
+
+            {% if day.occupied %}
+            <ul class="calendar-day-slots">
+              {% for slot in day.slots|slice:":2" %}
+              <li class="calendar-slot">
+                <span class="calendar-slot-time">{{ slot.time }}</span>
+                <span class="calendar-slot-rooms">
+                  {% for room in slot.rooms %}
+                  <span class="calendar-room-badge calendar-room-{{ room.key }}">{{ room.label }}</span>
+                  {% endfor %}
+                </span>
+              </li>
+              {% endfor %}
+              {% if day.slots|length > 2 %}
+              <li>+ altri slot</li>
+              {% endif %}
+            </ul>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

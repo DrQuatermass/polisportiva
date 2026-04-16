@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ news.title }} — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <a href="{% url 'news_list' %}" class="text-white-75 text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Tutte le notizie
+    </a>
+    <h1 class="fw-bold text-white mt-2 mb-1">{{ news.title }}</h1>
+    <p class="text-white-75 mb-0">
+      <i class="bi bi-calendar3 me-1"></i>{{ news.created_at|date:"d F Y" }}
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        {% if news.image %}
+        <img src="{{ news.image.url }}" alt="{{ news.title }}" class="img-fluid rounded mb-4 w-100" style="max-height:450px;object-fit:cover;">
+        {% endif %}
+        <div class="news-content fs-5 lh-lg">
+          {{ news.content|safe }}
+        </div>
+        <hr class="my-4">
+        <a href="{% url 'news_list' %}" class="btn btn-outline-danger">
+          <i class="bi bi-arrow-left me-1"></i>Torna alle notizie
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

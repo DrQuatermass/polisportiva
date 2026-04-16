@@ -1,0 +1,368 @@
+# Deploy — polisportivasanmarinese.it
+### VPS Aruba · Ubuntu 22.04 · Apache2 + Gunicorn
+
+---
+
+## FASE 1 — Preparazione VPS
+
+### 1.1 Accesso e utente
+
+```bash
+# Accedi via SSH come root
+ssh root@IP_DEL_VPS
+
+# Crea utente dedicato
+adduser polisportiva
+usermod -aG sudo polisportiva
+
+# Torna a lavorare come utente normale
+su - polisportiva
+```
+
+### 1.2 Aggiorna il sistema
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-pip python3-venv git \
+    apache2 libapache2-mod-wsgi-py3 \
+    python3-dev libpq-dev build-essential
+```
+
+---
+
+## FASE 2 — Codice sul server
+
+### 2.1 Carica il progetto
+
+**Opzione A — Git (consigliata)**
+```bash
+cd /var/www
+sudo mkdir polisportiva
+sudo chown polisportiva:polisportiva polisportiva
+cd polisportiva
+git clone https://github.com/DrQuatermass/polisportiva.git .
+```
+
+**Opzione B — Upload diretto con scp (dal tuo PC Windows)**
+```bash
+# Esegui dal terminale del tuo PC
+scp -r C:/polisportiva/* polisportiva@IP_DEL_VPS:/var/www/polisportiva/
+```
+
+### 2.2 Virtualenv e dipendenze
+
+```bash
+cd /var/www/polisportiva
+python3 -m venv venv
+source venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+---
+
+## FASE 3 — Settings di produzione
+
+### 3.1 File `.env` (credenziali separate dal codice)
+
+```bash
+nano /var/www/polisportiva/.env
+```
+
+Contenuto del file `.env`:
+```
+SECRET_KEY=genera-una-chiave-sicura-qui
+DEBUG=False
+ALLOWED_HOSTS=polisportivasanmarinese.it,www.polisportivasanmarinese.it
+SECURE_SSL_REDIRECT=True
+SECURE_HSTS_SECONDS=31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+SECURE_HSTS_PRELOAD=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+GOOGLE_CALENDAR_ICS_URL=https://calendar.google.com/calendar/ical/.../private-.../basic.ics
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+CONTACT_EMAIL=polisportivasanmarinese@gmail.com
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_ID=
+```
+
+Per generare una SECRET_KEY sicura:
+```bash
+python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+### 3.2 Settings di produzione
+
+`config/settings.py` legge gia' le variabili da `.env`; non inserire credenziali o chiavi nel codice. Il blocco seguente e' un riferimento storico e non va applicato se stai usando questa versione del repository:
+
+```python
+from pathlib import Path
+from decouple import config
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
+
+# Static files — in produzione Apache serve /var/www/polisportiva/staticfiles/
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'   # <-- cartella creata da collectstatic
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Email in produzione
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+```
+
+### 3.3 WhiteNoise
+
+WhiteNoise non e' richiesto da questa configurazione Apache. Aggiungilo solo se vuoi servire gli statici direttamente da Django:
+```python
+'whitenoise.middleware.WhiteNoiseMiddleware',
+```
+
+### 3.4 Raccogli i file statici
+
+```bash
+cd /var/www/polisportiva
+source venv/bin/activate
+python manage.py collectstatic --noinput
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+---
+
+## FASE 4 — Gunicorn come servizio systemd
+
+### 4.1 Crea il socket e il servizio
+
+```bash
+sudo nano /etc/systemd/system/gunicorn.socket
+```
+
+```ini
+[Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn.sock
+
+[Install]
+WantedBy=sockets.target
+```
+
+```bash
+sudo nano /etc/systemd/system/gunicorn.service
+```
+
+```ini
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=polisportiva
+Group=www-data
+WorkingDirectory=/var/www/polisportiva
+ExecStart=/var/www/polisportiva/venv/bin/gunicorn \
+    --access-logfile - \
+    --workers 3 \
+    --bind unix:/run/gunicorn.sock \
+    config.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 4.2 Avvia e abilita Gunicorn
+
+```bash
+sudo systemctl start gunicorn.socket
+sudo systemctl enable gunicorn.socket
+sudo systemctl status gunicorn.socket
+
+# Verifica che il socket esista
+ls /run/gunicorn.sock
+```
+
+---
+
+## FASE 5 — Configurazione Apache2
+
+### 5.1 Abilita i moduli necessari
+
+```bash
+sudo a2enmod proxy proxy_http headers rewrite
+sudo systemctl restart apache2
+```
+
+### 5.2 Virtual host HTTP (porta 80)
+
+```bash
+sudo nano /etc/apache2/sites-available/polisportiva.conf
+```
+
+```apache
+<VirtualHost *:80>
+    ServerName polisportivasanmarinese.it
+    ServerAlias www.polisportivasanmarinese.it
+
+    # Redirect HTTP → HTTPS (attivare dopo aver configurato SSL)
+    # RewriteEngine On
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # Proxy a Gunicorn
+    ProxyPreserveHost On
+    ProxyPass /static/ !
+    ProxyPass /media/  !
+    ProxyPass / unix:/run/gunicorn.sock|http://localhost/
+    ProxyPassReverse / unix:/run/gunicorn.sock|http://localhost/
+
+    # File statici serviti da Apache
+    Alias /static/ /var/www/polisportiva/staticfiles/
+    <Directory /var/www/polisportiva/staticfiles>
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    Alias /media/ /var/www/polisportiva/media/
+    <Directory /var/www/polisportiva/media>
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    # Header di sicurezza
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+
+    ErrorLog ${APACHE_LOG_DIR}/polisportiva_error.log
+    CustomLog ${APACHE_LOG_DIR}/polisportiva_access.log combined
+</VirtualHost>
+```
+
+### 5.3 Attiva il sito
+
+```bash
+sudo a2ensite polisportiva.conf
+sudo a2dissite 000-default.conf   # disabilita il sito default
+sudo apache2ctl configtest         # verifica la sintassi
+sudo systemctl reload apache2
+```
+
+---
+
+## FASE 6 — DNS su Aruba
+
+Nel pannello Aruba → **Domini** → `polisportivasanmarinese.it` → **Gestione DNS**:
+
+| Tipo | Nome | Valore | TTL |
+|------|------|--------|-----|
+| A | @ | IP_DEL_VPS | 3600 |
+| A | www | IP_DEL_VPS | 3600 |
+
+La propagazione DNS richiede **da 10 minuti a 24 ore**.
+
+Verifica propagazione:
+```bash
+# Da qualsiasi terminale
+nslookup polisportivasanmarinese.it
+# oppure
+dig polisportivasanmarinese.it
+```
+
+---
+
+## FASE 7 — HTTPS con Let's Encrypt (Certbot)
+
+```bash
+sudo apt install -y certbot python3-certbot-apache
+
+# Ottieni il certificato (dominio già propagato!)
+sudo certbot --apache -d polisportivasanmarinese.it -d www.polisportivasanmarinese.it
+
+# Certbot modifica automaticamente il conf Apache e aggiunge il redirect HTTP→HTTPS
+# Verifica rinnovo automatico
+sudo certbot renew --dry-run
+```
+
+Il certificato si rinnova automaticamente ogni 90 giorni.
+
+---
+
+## FASE 8 — Permessi cartelle
+
+```bash
+# La cartella media deve essere scrivibile da Gunicorn
+sudo chown -R polisportiva:www-data /var/www/polisportiva/media
+sudo chmod -R 775 /var/www/polisportiva/media
+
+# Staticfiles in sola lettura per Apache
+sudo chown -R polisportiva:www-data /var/www/polisportiva/staticfiles
+sudo chmod -R 755 /var/www/polisportiva/staticfiles
+```
+
+---
+
+## FASE 9 — Firewall
+
+```bash
+sudo ufw allow 'Apache Full'   # porta 80 e 443
+sudo ufw allow OpenSSH         # mantieni SSH aperto!
+sudo ufw enable
+sudo ufw status
+```
+
+---
+
+## Comandi utili post-deploy
+
+```bash
+# Riavvia Gunicorn dopo modifiche al codice
+sudo systemctl restart gunicorn
+
+# Ricarica Apache dopo modifiche al conf
+sudo systemctl reload apache2
+
+# Log errori in tempo reale
+sudo tail -f /var/log/apache2/polisportiva_error.log
+sudo journalctl -u gunicorn -f
+
+# Aggiorna il codice (se usi Git)
+cd /var/www/polisportiva
+git pull
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart gunicorn
+```
+
+---
+
+## Checklist finale
+
+- [ ] VPS raggiungibile via SSH
+- [ ] Progetto caricato in `/var/www/polisportiva/`
+- [ ] `.env` creato con SECRET_KEY, DEBUG=False, ALLOWED_HOSTS
+- [ ] `collectstatic` e `migrate` eseguiti
+- [ ] Gunicorn socket attivo (`systemctl status gunicorn.socket`)
+- [ ] Apache risponde su `http://IP_DEL_VPS`
+- [ ] DNS Aruba puntano all'IP del VPS
+- [ ] Certbot installato, HTTPS attivo
+- [ ] Sito raggiungibile su `https://polisportivasanmarinese.it`
+- [ ] Admin funzionante su `/admin/`
+- [ ] Upload media funzionante

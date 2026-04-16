@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Squadre — Polisportiva Sanmarinese{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <h1 class="fw-bold text-white mb-1">Le nostre squadre</h1>
+    <p class="text-white-75 mb-0">Tutte le categorie e i gruppi sportivi</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    {% if by_category %}
+      {% for category, team_list in by_category.items %}
+      <h2 class="section-title mb-4">{{ category }}</h2>
+      <div class="row g-4 mb-5">
+        {% for team in team_list %}
+        <div class="col-md-4">
+          <div class="card h-100 card-hover border-0 shadow-sm">
+            {% if team.image %}
+            <img src="{{ team.image.url }}" class="card-img-top" alt="{{ team.name }}" style="height:200px;object-fit:cover;">
+            {% else %}
+            <div class="d-flex align-items-center justify-content-center" style="height:200px;background:var(--blue);border-radius:calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
+              <i class="bi bi-people-fill text-white fs-1"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+              <span class="badge mb-2" style="background:var(--blue);">{{ team.category }}</span>
+              <h5 class="card-title fw-semibold">{{ team.name }}</h5>
+              <p class="card-text text-muted small">{{ team.description|truncatewords:20 }}</p>
+            </div>
+            <div class="card-footer bg-transparent border-0 pb-3">
+              <a href="{% url 'team_detail' team.slug %}" class="btn btn-sm btn-danger">Scopri</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-people fs-1 d-block mb-3"></i>
+      <p>Nessuna squadra disponibile al momento.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

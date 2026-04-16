@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ciclismo — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}Scuola di ciclismo FCI "Cristian Castagna", squadra agonistica e amatori. Attività per ragazzi dai 5 anni, velodromo di Cento, gare e corsi a San Marino di Carpi.{% endblock %}
+
+{% block content %}
+
+<section class="page-header py-5">
+  <div class="container">
+    <h1 class="fw-bold text-white mb-1">Ciclismo</h1>
+    <p class="text-white-75 mb-0">Scuola FCI "Cristian Castagna" · Squadra agonistica · Amatori</p>
+  </div>
+</section>
+
+<!-- Intro -->
+<section class="py-5">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <h2 class="section-title mb-4">Il ciclismo al centro di tutto</h2>
+        <p class="fs-5 text-muted lh-lg mb-3">
+          Dal 2016 la Polisportiva Sanmarinese è riconosciuta dal <strong>CONI</strong> e dalla <strong>Federazione Ciclistica Italiana</strong> come <strong>Scuola di Ciclismo "Cristian Castagna"</strong>, in memoria di un nostro atleta prematuramente scomparso.
+        </p>
+        <p class="text-muted lh-lg mb-4">
+          Il nostro progetto copre ogni fascia d'età e livello: dalla prima pedalata dei più piccoli fino alle gare nazionali, passando per il cicloturismo amatoriale. Un team di tecnici qualificati FCI — istruttori, allenatori TA2 e TA3 — segue ogni atleta con metodo e passione.
+        </p>
+      </div>
+      <div class="col-lg-5 text-center">
+        <img src="{% static 'images/tartaruga.svg' %}" alt="Tartaruga Polisportiva Sanmarinese" class="img-fluid" style="max-height:320px;" loading="eager">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Programmi -->
+<section class="py-5 bg-light border-top">
+  <div class="container">
+    <h2 class="section-title mb-2">I programmi</h2>
+    <p class="text-muted mb-5">Tre percorsi distinti, pensati per esigenze e obiettivi diversi.</p>
+    <div class="row g-4">
+
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body p-4">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:56px;height:56px;background:var(--red);">
+              <i class="bi bi-bicycle text-white fs-4"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Scuola di ciclismo</h4>
+            <p class="text-danger fw-semibold small mb-3">Ragazze e ragazzi dai 5 ai 14 anni</p>
+            <p class="text-muted small mb-3">
+              Percorso didattico strutturato per avvicinarsi alla bicicletta in modo sicuro e divertente. Le lezioni si tengono in spazi protetti sotto la guida di istruttori qualificati FCI, con progressione tecnica adatta a ogni età.
+            </p>
+            <ul class="text-muted small ps-3 mb-0">
+              <li>Equilibrio e coordinazione</li>
+              <li>Tecnica di base su strada e fuoristrada</li>
+              <li>Educazione stradale</li>
+              <li>Prime esperienze competitive (giocociclismo)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body p-4">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:56px;height:56px;background:var(--red);">
+              <i class="bi bi-trophy text-white fs-4"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Squadra agonistica</h4>
+            <p class="text-danger fw-semibold small mb-3">Giovanissimi ed Esordienti · 7–12 anni</p>
+            <p class="text-muted small mb-3">
+              Per chi vuole misurarsi nelle gare FCI. Gli atleti partecipano a competizioni su strada e in pista nel circuito del centro-nord Italia, affiancati da tecnici allenatori TA2 con anni di esperienza.
+            </p>
+            <ul class="text-muted small ps-3 mb-0">
+              <li>Gare su strada (categoria Esordienti)</li>
+              <li>Attività in pista al Velodromo di Cento</li>
+              <li>Preparazione fisica e tattica</li>
+              <li>Partecipazione a gare regionali e nazionali</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body p-4">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:56px;height:56px;background:var(--blue);">
+              <i class="bi bi-signpost-split text-white fs-4"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Squadra amatori</h4>
+            <p class="text-danger fw-semibold small mb-3">Aperto a tutti · nessun limite di età</p>
+            <p class="text-muted small mb-3">
+              Gruppo cicloturistico attivo tutto l'anno, con uscite su strada e MTB. Promuoviamo la bicicletta come mezzo di benessere, socialità e mobilità sostenibile. Nessun obbligo competitivo, solo passione.
+            </p>
+            <ul class="text-muted small ps-3 mb-0">
+              <li>Uscite settimanali organizzate</li>
+              <li>Cicloturismo e percorsi MTB</li>
+              <li>Partecipazione a granfondo non competitive</li>
+              <li>Attività al Velodromo di Cento (inverno)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Velodromo -->
+<section class="py-5 border-top">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="rounded overflow-hidden shadow" style="height:300px;">
+          <picture>
+            <source srcset="{% static 'images/velodromo.webp' %}" type="image/webp">
+            <img src="{% static 'images/velodromo.jpg' %}" alt="Velodromo Corrado Ardizzoni di Cento" class="w-100 h-100 d-block" style="object-fit:cover;" loading="lazy">
+          </picture>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="section-title mb-4">Velodromo Corrado Ardizzoni</h2>
+        <p class="text-muted lh-lg mb-3">
+          In collaborazione con la <strong>Stella Alpina di Renazzo (FE)</strong> e la <strong>G. Bonzagni di San Matteo della Decima (BO)</strong>, gestiamo l'attività in pista nel rinnovato Velodromo Corrado Ardizzoni di <strong>Cento (FE)</strong>.
+        </p>
+        <p class="text-muted lh-lg mb-4">
+          Per la <strong>stagione 2026</strong> sono in programma tre serate di gare ciclistiche in pista. Durante l'inverno il velodromo è aperto anche agli amatori per gli allenamenti.
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <div class="p-3 rounded border text-center" style="min-width:120px;">
+            <p class="fw-bold text-danger mb-0">3 serate</p>
+            <p class="text-muted small mb-0">gare 2026</p>
+          </div>
+          <div class="p-3 rounded border text-center" style="min-width:120px;">
+            <p class="fw-bold text-danger mb-0">Inverno</p>
+            <p class="text-muted small mb-0">aperto amatori</p>
+          </div>
+          <div class="p-3 rounded border text-center" style="min-width:120px;">
+            <p class="fw-bold text-danger mb-0">3 società</p>
+            <p class="text-muted small mb-0">in collaborazione</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 border-top">
+  <div class="container">
+    <h2 class="section-title mb-2">Palmares</h2>
+    <p class="text-muted mb-5">I nostri atleti hanno conquistato 7 titoli italiani in diverse specialità tra il 1990 e il 2019.</p>
+    <div class="row g-3">
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 1990</p>
+            <p class="text-muted small mb-0">Velocità in pista — Donne Allieve</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 1990</p>
+            <p class="text-muted small mb-0">Inseguimento in pista — Donne Allieve</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 1991</p>
+            <p class="text-muted small mb-0">Velocità in pista — Donne Juniores</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 1991</p>
+            <p class="text-muted small mb-0">Inseguimento in pista — Donne Juniores</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 2015</p>
+            <p class="text-muted small mb-0">Gara a punti in pista — Donne Esordienti</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 2017</p>
+            <p class="text-muted small mb-0">Inseguimento squadre in pista — Donne Esordienti</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="p-3 rounded border bg-light d-flex align-items-center gap-3">
+          <i class="bi bi-award-fill text-warning fs-3 flex-shrink-0"></i>
+          <div>
+            <p class="fw-bold small mb-0">Titolo Italiano 2019</p>
+            <p class="text-muted small mb-0">Strada — Maschi Esordienti 1° Anno</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Come iscriversi -->
+<section class="py-5 border-top">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h2 class="section-title mb-4" style="text-align:center;">
+          <span style="display:inline-block;">Vuoi pedalare con noi?</span>
+        </h2>
+        <p class="text-muted lh-lg mb-5">
+          Per iscriversi alla scuola di ciclismo, alla squadra agonistica o al gruppo amatori, contattaci direttamente. Ti risponderemo con tutte le informazioni su quote, attrezzatura necessaria e calendario delle attività.
+        </p>
+        <div class="row g-4 mb-5 text-start">
+          <div class="col-md-4">
+            <div class="p-4 rounded border text-center h-100">
+              <i class="bi bi-telephone-fill fs-2 text-danger mb-3 d-block"></i>
+              <p class="fw-bold mb-1">Telefono</p>
+              <p class="text-muted small mb-0">059 65 09 14</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-4 rounded border text-center h-100">
+              <i class="bi bi-envelope-fill fs-2 text-danger mb-3 d-block"></i>
+              <p class="fw-bold mb-1">Email</p>
+              <p class="text-muted small mb-0">polisportivasanmarinese@gmail.com</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-4 rounded border text-center h-100">
+              <i class="bi bi-instagram fs-2 text-danger mb-3 d-block"></i>
+              <p class="fw-bold mb-1">Instagram</p>
+              <p class="text-muted small mb-0">@psm_cycling_team</p>
+            </div>
+          </div>
+        </div>
+        <a href="{% url 'contatti' %}" class="btn btn-danger btn-lg px-5">
+          <i class="bi bi-envelope me-2"></i>Scrivici
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
