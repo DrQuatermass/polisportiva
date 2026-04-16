@@ -489,6 +489,17 @@ scp C:/polisportiva/db.sqlite3 root@IP_DEL_VPS:/var/www/polisportiva/db.sqlite3
 sudo chown polisportiva:www-data /var/www/polisportiva/db.sqlite3
 ```
 
+Se invece copi un dump JSON creato su Windows e `loaddata` fallisce con `UnicodeDecodeError`, converti il dump in UTF-8 prima di importarlo:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+path = Path('/var/www/polisportiva/local-sqlite-dump.json')
+raw = path.read_bytes()
+path.write_text(raw.decode('cp1252'), encoding='utf-8')
+PY
+```
+
 ```bash
 cd /var/www/polisportiva
 source venv/bin/activate
