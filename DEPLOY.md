@@ -217,6 +217,8 @@ sudo systemctl restart apache2
 
 ### 5.2 Virtual host HTTP (porta 80)
 
+Nel file Apache non copiare le righe Markdown tipo ```apache o ```: devono esserci solo direttive Apache.
+
 ```bash
 sudo nano /etc/apache2/sites-available/polisportiva.conf
 ```
@@ -257,6 +259,41 @@ sudo nano /etc/apache2/sites-available/polisportiva.conf
     ErrorLog ${APACHE_LOG_DIR}/polisportiva_error.log
     CustomLog ${APACHE_LOG_DIR}/polisportiva_access.log combined
 </VirtualHost>
+```
+
+In alternativa, puoi scrivere il file direttamente senza copiare i delimitatori Markdown:
+
+```bash
+sudo tee /etc/apache2/sites-available/polisportiva.conf >/dev/null <<'EOF'
+<VirtualHost *:80>
+    ServerName polisportivasanmarinese.it
+    ServerAlias www.polisportivasanmarinese.it
+
+    ProxyPreserveHost On
+    ProxyPass /static/ !
+    ProxyPass /media/  !
+    ProxyPass / unix:/run/gunicorn.sock|http://localhost/
+    ProxyPassReverse / unix:/run/gunicorn.sock|http://localhost/
+
+    Alias /static/ /var/www/polisportiva/staticfiles/
+    <Directory /var/www/polisportiva/staticfiles>
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    Alias /media/ /var/www/polisportiva/media/
+    <Directory /var/www/polisportiva/media>
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+
+    ErrorLog ${APACHE_LOG_DIR}/polisportiva_error.log
+    CustomLog ${APACHE_LOG_DIR}/polisportiva_access.log combined
+</VirtualHost>
+EOF
 ```
 
 ### 5.3 Attiva il sito
