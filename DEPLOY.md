@@ -412,6 +412,31 @@ sudo systemctl restart polisportiva-gunicorn.service
 
 Il certificato si rinnova automaticamente ogni 90 giorni.
 
+Verifica che il rinnovo automatico sia attivo tramite systemd timer:
+
+```bash
+sudo systemctl status certbot.timer
+sudo systemctl enable --now certbot.timer
+systemctl list-timers | grep certbot
+```
+
+Il dry-run deve completarsi senza errori:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+Se vuoi forzare un reload di Apache dopo ogni rinnovo riuscito, aggiungi un deploy hook:
+
+```bash
+sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-apache.sh >/dev/null <<'EOF'
+#!/bin/sh
+systemctl reload apache2
+EOF
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-apache.sh
+```
+
 ---
 
 ## FASE 8 — Permessi cartelle
