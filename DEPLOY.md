@@ -241,6 +241,16 @@ sudo systemctl status polisportiva-gunicorn.socket
 ls /run/polisportiva-gunicorn.sock
 ```
 
+Se `polisportiva-gunicorn.service` fallisce con `status=217/USER`, l'utente indicato in `User=polisportiva` non esiste. Crealo e assegna il progetto:
+
+```bash
+sudo adduser --disabled-password --gecos "" polisportiva
+sudo chown -R polisportiva:www-data /var/www/polisportiva
+sudo systemctl daemon-reload
+sudo systemctl restart polisportiva-gunicorn.socket
+sudo systemctl restart polisportiva-gunicorn.service
+```
+
 ---
 
 ## FASE 5 — Configurazione Apache2
