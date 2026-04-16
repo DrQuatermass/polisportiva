@@ -1,4 +1,5 @@
 import calendar
+import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from urllib.request import Request, urlopen
@@ -17,6 +18,8 @@ from events.models import Event
 from news.models import News
 
 from .forms import ContattoForm
+
+logger = logging.getLogger(__name__)
 
 
 class HomeView(TemplateView):
@@ -338,7 +341,8 @@ class CalendarioView(TemplateView):
         try:
             occupied_by_day = self._fetch_occupied_by_day()
             calendar_error = ''
-        except Exception:
+        except Exception as exc:
+            logger.warning('Errore caricamento calendario ICS: %s', exc)
             occupied_by_day = defaultdict(list)
             calendar_error = 'Calendario temporaneamente non disponibile.'
 

@@ -86,7 +86,9 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS=True
 SECURE_HSTS_PRELOAD=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
-GOOGLE_CALENDAR_ICS_URL=https://calendar.google.com/calendar/ical/.../private-.../basic.ics
+# Opzionale: lascia vuoto o rimuovi per usare il calendario pubblico.
+# Per calendario privato, incolla l'URL ICS segreto completo da Google Calendar.
+GOOGLE_CALENDAR_ICS_URL=
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=

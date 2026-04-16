@@ -81,13 +81,13 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 SITE_URL = 'https://polisportivasanmarinese.it'  # usato per condivisione social
 
-GOOGLE_CALENDAR_ICS_URL = env(
-    'GOOGLE_CALENDAR_ICS_URL',
-    (
-        'https://calendar.google.com/calendar/ical/'
-        'polisportivasanmarinese%40gmail.com/public/basic.ics'
-    ),
+DEFAULT_GOOGLE_CALENDAR_ICS_URL = (
+    'https://calendar.google.com/calendar/ical/'
+    'polisportivasanmarinese%40gmail.com/public/basic.ics'
 )
+GOOGLE_CALENDAR_ICS_URL = env('GOOGLE_CALENDAR_ICS_URL', DEFAULT_GOOGLE_CALENDAR_ICS_URL)
+if not GOOGLE_CALENDAR_ICS_URL or '...' in GOOGLE_CALENDAR_ICS_URL:
+    GOOGLE_CALENDAR_ICS_URL = DEFAULT_GOOGLE_CALENDAR_ICS_URL
 
 
 # Application definition
