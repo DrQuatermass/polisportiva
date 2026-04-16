@@ -154,6 +154,8 @@ python manage.py createsuperuser
 
 ### 4.1 Crea il socket e il servizio
 
+Nei file systemd non copiare le righe Markdown tipo ```ini o ```: devono esserci solo direttive systemd.
+
 ```bash
 sudo nano /etc/systemd/system/gunicorn.socket
 ```
@@ -167,6 +169,21 @@ ListenStream=/run/gunicorn.sock
 
 [Install]
 WantedBy=sockets.target
+```
+
+In alternativa, puoi scrivere il socket direttamente:
+
+```bash
+sudo tee /etc/systemd/system/gunicorn.socket >/dev/null <<'EOF'
+[Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn.sock
+
+[Install]
+WantedBy=sockets.target
+EOF
 ```
 
 ```bash
@@ -191,6 +208,26 @@ ExecStart=/var/www/polisportiva/venv/bin/gunicorn \
 
 [Install]
 WantedBy=multi-user.target
+```
+
+In alternativa, puoi scrivere il servizio direttamente:
+
+```bash
+sudo tee /etc/systemd/system/gunicorn.service >/dev/null <<'EOF'
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=polisportiva
+Group=www-data
+WorkingDirectory=/var/www/polisportiva
+ExecStart=/var/www/polisportiva/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/gunicorn.sock config.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+EOF
 ```
 
 ### 4.2 Avvia e abilita Gunicorn
