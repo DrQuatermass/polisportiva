@@ -456,7 +456,76 @@ sudo chmod -R 755 /var/www/polisportiva/staticfiles
 
 ---
 
-## FASE 9 — Firewall
+
+## FASE 9 - Migrazione database SQLite a PostgreSQL
+
+Installa PostgreSQL e crea database/utente:
+
+```bash
+sudo apt install -y postgresql postgresql-contrib
+sudo -u postgres psql
+```
+
+Nel prompt `psql`:
+
+```sql
+CREATE DATABASE polisportiva;
+CREATE USER polisportiva WITH PASSWORD 'cambia-password-sicura';
+ALTER ROLE polisportiva SET client_encoding TO 'utf8';
+ALTER ROLE polisportiva SET default_transaction_isolation TO 'read committed';
+ALTER ROLE polisportiva SET timezone TO 'Europe/Rome';
+GRANT ALL PRIVILEGES ON DATABASE polisportiva TO polisportiva;
+\c polisportiva
+GRANT ALL ON SCHEMA public TO polisportiva;
+\q
+```
+
+Prima di cambiare `.env`, esporta i dati da SQLite:
+
+Se il database aggiornato e' ancora sul PC locale, copialo prima sulla VPS:
+
+```bash
+scp C:/polisportiva/db.sqlite3 root@IP_DEL_VPS:/var/www/polisportiva/db.sqlite3
+sudo chown polisportiva:www-data /var/www/polisportiva/db.sqlite3
+```
+
+```bash
+cd /var/www/polisportiva
+source venv/bin/activate
+python manage.py dumpdata \
+  --natural-foreign \
+  --natural-primary \
+  --exclude contenttypes \
+  --exclude auth.permission \
+  --indent 2 > /var/www/polisportiva/sqlite-dump.json
+```
+
+Poi aggiorna `.env`:
+
+```env
+DATABASE_ENGINE=postgresql
+POSTGRES_DB=polisportiva
+POSTGRES_USER=polisportiva
+POSTGRES_PASSWORD=cambia-password-sicura
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+```
+
+Installa le dipendenze, crea lo schema PostgreSQL e importa i dati:
+
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py loaddata /var/www/polisportiva/sqlite-dump.json
+python manage.py check
+sudo systemctl restart polisportiva-gunicorn.service
+```
+
+Se hai file caricati dagli utenti, copia anche la cartella `media/`; il dump migra solo i record database, non i file.
+
+---
+
+## FASE 10 - Firewall
 
 ```bash
 sudo ufw allow 'Apache Full'   # porta 80 e 443
