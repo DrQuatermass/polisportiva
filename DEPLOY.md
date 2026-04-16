@@ -95,6 +95,12 @@ PAYPAL_MODE=sandbox
 PAYPAL_CLIENT_ID=
 ```
 
+Durante i test da server, se usi `curl http://127.0.0.1` o l'IP pubblico, aggiungi anche `127.0.0.1,localhost,IP_DEL_VPS` ad `ALLOWED_HOSTS`, oppure passa l'header Host del dominio:
+
+```bash
+curl -I -H "Host: polisportivasanmarinese.it" http://127.0.0.1
+```
+
 Per generare una SECRET_KEY sicura:
 ```bash
 python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
