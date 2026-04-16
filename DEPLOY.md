@@ -157,15 +157,15 @@ python manage.py createsuperuser
 Nei file systemd non copiare le righe Markdown tipo ```ini o ```: devono esserci solo direttive systemd.
 
 ```bash
-sudo nano /etc/systemd/system/gunicorn.socket
+sudo nano /etc/systemd/system/polisportiva-gunicorn.socket
 ```
 
 ```ini
 [Unit]
-Description=gunicorn socket
+Description=Polisportiva Gunicorn socket
 
 [Socket]
-ListenStream=/run/gunicorn.sock
+ListenStream=/run/polisportiva-gunicorn.sock
 
 [Install]
 WantedBy=sockets.target
@@ -174,12 +174,12 @@ WantedBy=sockets.target
 In alternativa, puoi scrivere il socket direttamente:
 
 ```bash
-sudo tee /etc/systemd/system/gunicorn.socket >/dev/null <<'EOF'
+sudo tee /etc/systemd/system/polisportiva-gunicorn.socket >/dev/null <<'EOF'
 [Unit]
-Description=gunicorn socket
+Description=Polisportiva Gunicorn socket
 
 [Socket]
-ListenStream=/run/gunicorn.sock
+ListenStream=/run/polisportiva-gunicorn.sock
 
 [Install]
 WantedBy=sockets.target
@@ -187,13 +187,13 @@ EOF
 ```
 
 ```bash
-sudo nano /etc/systemd/system/gunicorn.service
+sudo nano /etc/systemd/system/polisportiva-gunicorn.service
 ```
 
 ```ini
 [Unit]
 Description=gunicorn daemon
-Requires=gunicorn.socket
+Requires=polisportiva-gunicorn.socket
 After=network.target
 
 [Service]
@@ -203,7 +203,7 @@ WorkingDirectory=/var/www/polisportiva
 ExecStart=/var/www/polisportiva/venv/bin/gunicorn \
     --access-logfile - \
     --workers 3 \
-    --bind unix:/run/gunicorn.sock \
+    --bind unix:/run/polisportiva-gunicorn.sock \
     config.wsgi:application
 
 [Install]
@@ -213,17 +213,17 @@ WantedBy=multi-user.target
 In alternativa, puoi scrivere il servizio direttamente:
 
 ```bash
-sudo tee /etc/systemd/system/gunicorn.service >/dev/null <<'EOF'
+sudo tee /etc/systemd/system/polisportiva-gunicorn.service >/dev/null <<'EOF'
 [Unit]
 Description=gunicorn daemon
-Requires=gunicorn.socket
+Requires=polisportiva-gunicorn.socket
 After=network.target
 
 [Service]
 User=polisportiva
 Group=www-data
 WorkingDirectory=/var/www/polisportiva
-ExecStart=/var/www/polisportiva/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/gunicorn.sock config.wsgi:application
+ExecStart=/var/www/polisportiva/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/polisportiva-gunicorn.sock config.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
@@ -233,12 +233,12 @@ EOF
 ### 4.2 Avvia e abilita Gunicorn
 
 ```bash
-sudo systemctl start gunicorn.socket
-sudo systemctl enable gunicorn.socket
-sudo systemctl status gunicorn.socket
+sudo systemctl start polisportiva-gunicorn.socket
+sudo systemctl enable polisportiva-gunicorn.socket
+sudo systemctl status polisportiva-gunicorn.socket
 
 # Verifica che il socket esista
-ls /run/gunicorn.sock
+ls /run/polisportiva-gunicorn.sock
 ```
 
 ---
@@ -273,8 +273,8 @@ sudo nano /etc/apache2/sites-available/polisportiva.conf
     ProxyPreserveHost On
     ProxyPass /static/ !
     ProxyPass /media/  !
-    ProxyPass / unix:/run/gunicorn.sock|http://localhost/
-    ProxyPassReverse / unix:/run/gunicorn.sock|http://localhost/
+    ProxyPass / unix:/run/polisportiva-gunicorn.sock|http://localhost/
+    ProxyPassReverse / unix:/run/polisportiva-gunicorn.sock|http://localhost/
 
     # File statici serviti da Apache
     Alias /static/ /var/www/polisportiva/staticfiles/
@@ -309,8 +309,8 @@ sudo tee /etc/apache2/sites-available/polisportiva.conf >/dev/null <<'EOF'
     ProxyPreserveHost On
     ProxyPass /static/ !
     ProxyPass /media/  !
-    ProxyPass / unix:/run/gunicorn.sock|http://localhost/
-    ProxyPassReverse / unix:/run/gunicorn.sock|http://localhost/
+    ProxyPass / unix:/run/polisportiva-gunicorn.sock|http://localhost/
+    ProxyPassReverse / unix:/run/polisportiva-gunicorn.sock|http://localhost/
 
     Alias /static/ /var/www/polisportiva/staticfiles/
     <Directory /var/www/polisportiva/staticfiles>
@@ -411,14 +411,14 @@ sudo ufw status
 
 ```bash
 # Riavvia Gunicorn dopo modifiche al codice
-sudo systemctl restart gunicorn
+sudo systemctl restart polisportiva-gunicorn
 
 # Ricarica Apache dopo modifiche al conf
 sudo systemctl reload apache2
 
 # Log errori in tempo reale
 sudo tail -f /var/log/apache2/polisportiva_error.log
-sudo journalctl -u gunicorn -f
+sudo journalctl -u polisportiva-gunicorn -f
 
 # Aggiorna il codice (se usi Git)
 cd /var/www/polisportiva
@@ -427,7 +427,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py collectstatic --noinput
-sudo systemctl restart gunicorn
+sudo systemctl restart polisportiva-gunicorn
 ```
 
 ---
@@ -438,7 +438,7 @@ sudo systemctl restart gunicorn
 - [ ] Progetto caricato in `/var/www/polisportiva/`
 - [ ] `.env` creato con SECRET_KEY, DEBUG=False, ALLOWED_HOSTS
 - [ ] `collectstatic` e `migrate` eseguiti
-- [ ] Gunicorn socket attivo (`systemctl status gunicorn.socket`)
+- [ ] polisportiva-gunicorn.socket attivo (`systemctl status polisportiva-gunicorn.socket`)
 - [ ] Apache risponde su `http://IP_DEL_VPS`
 - [ ] DNS Aruba puntano all'IP del VPS
 - [ ] Certbot installato, HTTPS attivo
