@@ -23,9 +23,14 @@ su - polisportiva
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv git \
-    apache2 libapache2-mod-wsgi-py3 \
+sudo apt install -y software-properties-common git apache2 \
     python3-dev libpq-dev build-essential
+
+# Django 6 richiede Python 3.12+
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install -y python3.12 python3.12-venv python3.12-dev
+python3.12 --version
 ```
 
 ---
@@ -53,7 +58,7 @@ scp -r C:/polisportiva/* polisportiva@IP_DEL_VPS:/var/www/polisportiva/
 
 ```bash
 cd /var/www/polisportiva
-python3 -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate
 
 pip install --upgrade pip
