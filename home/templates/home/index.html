@@ -36,8 +36,10 @@
   <div class="container position-relative text-white text-center">
     <h1 class="display-3 fw-bold mb-3">Polisportiva Sanmarinese<br>ASD-APS</h1>
     <p class="lead mb-4">Scuola di ciclismo, squadra agonistica e impegno sociale a San Marino di Carpi.</p>
-    <a href="{% url 'chi_siamo' %}" class="btn btn-danger btn-lg px-5 me-2">Scopri la societa</a>
-    <a href="{% url 'contatti' %}" class="btn btn-outline-light btn-lg px-5">Contattaci</a>
+    <div class="hero-actions">
+      <a href="{% url 'chi_siamo' %}" class="btn btn-danger btn-lg">Scopri la societa</a>
+      <a href="{% url 'contatti' %}" class="btn btn-outline-light btn-lg">Contattaci</a>
+    </div>
   </div>
 </section>
 
