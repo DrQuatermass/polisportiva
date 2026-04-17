@@ -16,8 +16,8 @@
       </a>
       {% endif %}
       {% if doc.has_file %}
-      <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-danger">
-        <i class="bi bi-download me-1"></i>PDF
+      <a href="{% url 'document_download' doc.slug %}" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-download me-1"></i>Scarica PDF
       </a>
       {% endif %}
       {% if not doc.has_content and not doc.has_file %}
