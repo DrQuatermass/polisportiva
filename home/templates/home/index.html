@@ -134,8 +134,10 @@
   <div class="container text-center text-white">
     <h2 class="fw-bold mb-3">Cresci con noi, in bici e nella comunita</h2>
     <p class="lead mb-4 text-white opacity-90">Dai 5 ai 14 anni accompagniamo ragazze e ragazzi nel ciclismo, promuovendo tecnica, rispetto delle regole e passione sportiva.</p>
-    <a href="{% url 'contatti' %}" class="btn btn-light btn-lg px-5 fw-semibold me-3">Contattaci</a>
-    <a href="{% url 'ciclismo' %}" class="btn btn-outline-light btn-lg px-5 fw-semibold">Il ciclismo</a>
+    <div class="cta-actions">
+      <a href="{% url 'contatti' %}" class="btn btn-light btn-lg fw-semibold">Contattaci</a>
+      <a href="{% url 'ciclismo' %}" class="btn btn-outline-light btn-lg fw-semibold">Il ciclismo</a>
+    </div>
   </div>
 </section>
 {% endblock %}
