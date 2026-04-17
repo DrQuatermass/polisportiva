@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 
-{% block title %}Sponsor – Polisportiva Sanmarinese{% endblock %}
+{% block title %}Sponsor e partner — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}Aziende e partner che sostengono la Polisportiva Sanmarinese ASD-APS di Carpi: grazie al loro supporto nascono eventi, corsi e attività sociali.{% endblock %}
+{% block og_title %}Sponsor — Polisportiva Sanmarinese{% endblock %}
 
 {% block content %}
 <section class="py-5">
@@ -15,7 +17,7 @@
         <a href="{{ sponsor.website }}" target="_blank" rel="noopener noreferrer"
            class="sponsor-card d-flex align-items-center justify-content-center p-3 bg-white border rounded shadow-sm h-100"
            title="{{ sponsor.name }}">
-          <img src="{{ sponsor.logo.url }}" alt="{{ sponsor.name }}" class="sponsor-logo img-fluid">
+          <img src="{{ sponsor.logo.url }}" alt="{{ sponsor.name }}" class="sponsor-logo img-fluid" width="220" height="120" loading="lazy" decoding="async">
         </a>
       </div>
       {% endfor %}

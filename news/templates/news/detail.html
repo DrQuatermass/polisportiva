@@ -2,38 +2,87 @@
 {% load static %}
 
 {% block title %}{{ news.title }} — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}{{ news.get_meta_description }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ news.title }}{% endblock %}
+{% block og_description %}{{ news.get_meta_description }}{% endblock %}
+{% block og_image %}{% if news.get_og_image_url %}{{ SITE_URL }}{{ news.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+{% block twitter_title %}{{ news.title }}{% endblock %}
+{% block twitter_description %}{{ news.get_meta_description }}{% endblock %}
+{% block twitter_image %}{% if news.get_og_image_url %}{{ SITE_URL }}{{ news.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  "headline": "{{ news.title|escapejs }}",
+  "datePublished": "{{ news.created_at|date:'c' }}",
+  "dateModified": "{{ news.created_at|date:'c' }}",
+  "author": { "@type": "Organization", "name": "{{ SITE_NAME }}" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "{{ SITE_NAME }}",
+    "logo": { "@type": "ImageObject", "url": "{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}" }
+  },
+  "mainEntityOfPage": "{{ CANONICAL_URL }}",
+  {% if news.image %}"image": "{{ SITE_URL }}{{ news.image.url }}",{% endif %}
+  "description": "{{ news.get_meta_description|escapejs }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ SITE_URL }}/" },
+    { "@type": "ListItem", "position": 2, "name": "News", "item": "{{ SITE_URL }}{% url 'news_list' %}" },
+    { "@type": "ListItem", "position": 3, "name": "{{ news.title|escapejs }}", "item": "{{ CANONICAL_URL }}" }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 
 <section class="page-header py-5">
   <div class="container">
-    <a href="{% url 'news_list' %}" class="text-white-75 text-decoration-none small">
-      <i class="bi bi-arrow-left me-1"></i>Tutte le notizie
-    </a>
+    <nav aria-label="breadcrumb">
+      <a href="{% url 'news_list' %}" class="text-white-75 text-decoration-none small">
+        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutte le notizie
+      </a>
+    </nav>
     <h1 class="fw-bold text-white mt-2 mb-1">{{ news.title }}</h1>
     <p class="text-white-75 mb-0">
-      <i class="bi bi-calendar3 me-1"></i>{{ news.created_at|date:"d F Y" }}
+      <time datetime="{{ news.created_at|date:'c' }}">
+        <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>{{ news.created_at|date:"d F Y" }}
+      </time>
     </p>
   </div>
 </section>
 
-<section class="py-5">
+<article class="py-5">
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-lg-8">
         {% if news.image %}
-        <img src="{{ news.image.url }}" alt="{{ news.title }}" class="img-fluid rounded mb-4 w-100" style="max-height:450px;object-fit:cover;">
+        <img src="{{ news.image.url }}"
+             alt="{{ news.title }}"
+             class="img-fluid rounded mb-4 w-100"
+             style="max-height:450px;object-fit:cover;"
+             width="800" height="450"
+             loading="eager" fetchpriority="high" decoding="async">
         {% endif %}
         <div class="news-content fs-5 lh-lg">
           {{ news.content|safe }}
         </div>
         <hr class="my-4">
         <a href="{% url 'news_list' %}" class="btn btn-outline-danger">
-          <i class="bi bi-arrow-left me-1"></i>Torna alle notizie
+          <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Torna alle notizie
         </a>
       </div>
     </div>
   </div>
-</section>
+</article>
 
 {% endblock %}

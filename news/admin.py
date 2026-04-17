@@ -21,10 +21,21 @@ class NewsAdmin(admin.ModelAdmin):
     form = NewsAdminForm
     list_display = ['title', 'created_at', 'published', 'facebook_share']
     list_filter = ['published', 'created_at']
-    search_fields = ['title', 'content']
+    search_fields = ['title', 'content', 'meta_description']
     ordering = ['-created_at']
     prepopulated_fields = {'slug': ('title',)}
     list_editable = ['published']
+
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'slug', 'content', 'image', 'published', 'created_at'),
+        }),
+        ('SEO & Social', {
+            'fields': ('meta_description', 'og_image'),
+            'classes': ('collapse',),
+            'description': 'Personalizza come appare la notizia su Google, Facebook e WhatsApp.',
+        }),
+    )
 
     def facebook_share(self, obj):
         site = getattr(settings, 'SITE_URL', '').rstrip('/')

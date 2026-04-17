@@ -24,6 +24,10 @@ class DocumentAdmin(admin.ModelAdmin):
         ('File PDF', {
             'fields': ('file',),
         }),
+        ('SEO', {
+            'fields': ('meta_description',),
+            'classes': ('collapse',),
+        }),
     )
 
     def has_content_icon(self, obj):

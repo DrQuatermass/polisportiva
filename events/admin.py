@@ -53,6 +53,11 @@ class EventAdmin(admin.ModelAdmin):
         ('Evento', {
             'fields': ['title', 'slug', 'description', 'date', 'location', 'image', 'published'],
         }),
+        ('SEO & Social', {
+            'fields': ['meta_description', 'og_image'],
+            'classes': ['collapse'],
+            'description': 'Personalizza come appare l\'evento su Google, Facebook e WhatsApp.',
+        }),
         ('Iscrizioni', {
             'fields': [
                 'registration_enabled',

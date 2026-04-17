@@ -1,6 +1,10 @@
+import re
 import uuid
+
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 
 class Event(models.Model):
@@ -11,6 +15,22 @@ class Event(models.Model):
     location = models.CharField(max_length=200)
     image = models.ImageField(upload_to='events/', blank=True, null=True)
     published = models.BooleanField(default=True, verbose_name='Pubblicato')
+
+    # --- SEO ---
+    meta_description = models.CharField(
+        max_length=160,
+        blank=True,
+        verbose_name='Meta description',
+        help_text='Testo mostrato da Google e social (max 160 caratteri). '
+                  'Se vuoto viene generato dalla descrizione.',
+    )
+    og_image = models.ImageField(
+        upload_to='events/og/',
+        blank=True,
+        null=True,
+        verbose_name='Immagine social (opzionale)',
+        help_text='1200x630 consigliato. Se vuoto usa l\'immagine principale.',
+    )
 
     registration_enabled = models.BooleanField(default=False, verbose_name='Abilita iscrizioni')
     registration_deadline = models.DateTimeField(blank=True, null=True, verbose_name='Scadenza iscrizioni', help_text='Lascia vuoto per nessuna scadenza')
@@ -25,6 +45,23 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
+    def get_absolute_url(self):
+        return reverse('event_detail', kwargs={'slug': self.slug})
+
+    def get_meta_description(self):
+        if self.meta_description:
+            return self.meta_description
+        text = strip_tags(self.description or '')
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text[:157] + '…' if len(text) > 160 else text
+
+    def get_og_image_url(self):
+        if self.og_image:
+            return self.og_image.url
+        if self.image:
+            return self.image.url
+        return ''
 
     @property
     def registrations_open(self):

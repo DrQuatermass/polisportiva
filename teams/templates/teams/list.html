@@ -22,7 +22,7 @@
         <div class="col-md-4">
           <div class="card h-100 card-hover border-0 shadow-sm">
             {% if team.image %}
-            <img src="{{ team.image.url }}" class="card-img-top" alt="{{ team.name }}" style="height:200px;object-fit:cover;">
+            <img src="{{ team.image.url }}" class="card-img-top" alt="{{ team.name }}" style="height:200px;object-fit:cover;" width="400" height="200" loading="lazy" decoding="async">
             {% else %}
             <div class="d-flex align-items-center justify-content-center" style="height:200px;background:var(--blue);border-radius:calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
               <i class="bi bi-people-fill text-white fs-1"></i>

@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.http import HttpResponse
 from django.views.generic import FormView, TemplateView
 from django.views.decorators.cache import never_cache
 
@@ -381,6 +382,22 @@ class CalendarioView(TemplateView):
 
 class CiclismoView(TemplateView):
     template_name = 'home/ciclismo.html'
+
+
+def robots_txt(request):
+    """robots.txt generato dinamicamente con link al sitemap."""
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    lines = [
+        'User-agent: *',
+        'Disallow: /admin/',
+        'Disallow: /eventi/paypal/',
+        'Disallow: /eventi/pagamento/',
+        'Disallow: /eventi/conferma/',
+        'Allow: /',
+        '',
+        f'Sitemap: {site_url}/sitemap.xml',
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain')
 
 
 class ContattiView(FormView):

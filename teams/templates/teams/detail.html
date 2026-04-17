@@ -20,7 +20,7 @@
     <div class="row justify-content-center">
       <div class="col-lg-8">
         {% if team.image %}
-        <img src="{{ team.image.url }}" alt="{{ team.name }}" class="img-fluid rounded mb-4 w-100" style="max-height:400px;object-fit:cover;">
+        <img src="{{ team.image.url }}" alt="{{ team.name }}" class="img-fluid rounded mb-4 w-100" style="max-height:400px;object-fit:cover;" width="800" height="400" loading="eager" fetchpriority="high" decoding="async">
         {% endif %}
 
         <div class="fs-5 lh-lg mb-4">

@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}News — Polisportiva Sanmarinese{% endblock %}
+{% block title %}News e comunicati — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}Notizie, comunicati stampa, risultati sportivi e aggiornamenti dalla Polisportiva Sanmarinese ASD-APS di Carpi.{% endblock %}
+{% block og_title %}News — Polisportiva Sanmarinese{% endblock %}
 
 {% block content %}
 
@@ -22,7 +24,7 @@
           <div class="card h-100 card-hover border-0 shadow-sm overflow-hidden">
             {% if item.image %}
             <div class="card-media">
-              <img src="{{ item.image.url }}" class="card-img-top card-media-img" alt="{{ item.title }}" loading="lazy">
+              <img src="{{ item.image.url }}" class="card-img-top card-media-img" alt="{{ item.title }}" width="400" height="225" loading="lazy" decoding="async">
             </div>
             {% else %}
             <div class="card-media d-flex align-items-center justify-content-center bg-secondary">

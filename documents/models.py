@@ -1,6 +1,9 @@
+import re
+
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.urls import reverse
+from django.utils.html import strip_tags
 from django.utils.text import slugify
 
 
@@ -37,6 +40,15 @@ class Document(models.Model):
     active = models.BooleanField(default=True, verbose_name='Attivo')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # --- SEO ---
+    meta_description = models.CharField(
+        max_length=160,
+        blank=True,
+        verbose_name='Meta description',
+        help_text='Testo mostrato da Google (max 160 caratteri). '
+                  'Se vuoto viene generato da descrizione/contenuto.',
+    )
+
     class Meta:
         ordering = ['category', 'order', 'title']
         verbose_name = 'Documento'
@@ -60,3 +72,10 @@ class Document(models.Model):
     @property
     def has_file(self):
         return bool(self.file)
+
+    def get_meta_description(self):
+        if self.meta_description:
+            return self.meta_description
+        source = self.description or strip_tags(self.content or '')
+        source = re.sub(r'\s+', ' ', source).strip()
+        return source[:157] + '…' if len(source) > 160 else source

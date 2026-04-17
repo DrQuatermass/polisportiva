@@ -2,19 +2,71 @@
 {% load static %}
 
 {% block title %}{{ event.title }} — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}{{ event.get_meta_description }}{% endblock %}
+{% block og_type %}event{% endblock %}
+{% block og_title %}{{ event.title }}{% endblock %}
+{% block og_description %}{{ event.get_meta_description }}{% endblock %}
+{% block og_image %}{% if event.get_og_image_url %}{{ SITE_URL }}{{ event.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+{% block twitter_title %}{{ event.title }}{% endblock %}
+{% block twitter_description %}{{ event.get_meta_description }}{% endblock %}
+{% block twitter_image %}{% if event.get_og_image_url %}{{ SITE_URL }}{{ event.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Event",
+  "name": "{{ event.title|escapejs }}",
+  "startDate": "{{ event.date|date:'c' }}",
+  "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+  "eventStatus": "https://schema.org/EventScheduled",
+  "location": {
+    "@type": "Place",
+    "name": "{{ event.location|escapejs }}",
+    "address": { "@type": "PostalAddress", "addressLocality": "San Marino di Carpi", "addressCountry": "IT" }
+  },
+  {% if event.image %}"image": "{{ SITE_URL }}{{ event.image.url }}",{% endif %}
+  "description": "{{ event.get_meta_description|escapejs }}",
+  "organizer": {
+    "@type": "Organization",
+    "name": "{{ SITE_NAME }}",
+    "url": "{{ SITE_URL }}/"
+  }{% if event.registration_enabled and event.registrations_open %},
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ CANONICAL_URL }}",
+    "price": "{{ event.registration_price }}",
+    "priceCurrency": "EUR",
+    "availability": "https://schema.org/InStock",
+    "validFrom": "{{ event.date|date:'c' }}"
+  }{% endif %}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ SITE_URL }}/" },
+    { "@type": "ListItem", "position": 2, "name": "Eventi", "item": "{{ SITE_URL }}{% url 'events_list' %}" },
+    { "@type": "ListItem", "position": 3, "name": "{{ event.title|escapejs }}", "item": "{{ CANONICAL_URL }}" }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 
 <section class="page-header py-5">
   <div class="container">
     <a href="{% url 'events_list' %}" class="text-white-75 text-decoration-none small">
-      <i class="bi bi-arrow-left me-1"></i>Tutti gli eventi
+      <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tutti gli eventi
     </a>
     <h1 class="fw-bold text-white mt-2 mb-2">{{ event.title }}</h1>
     <div class="d-flex flex-wrap gap-3 text-white-75 small">
-      <span><i class="bi bi-calendar3 me-1"></i>{{ event.date|date:"l d F Y" }}</span>
-      <span><i class="bi bi-clock me-1"></i>{{ event.date|date:"H:i" }}</span>
-      <span><i class="bi bi-geo-alt me-1"></i>{{ event.location }}</span>
+      <time datetime="{{ event.date|date:'c' }}"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>{{ event.date|date:"l d F Y" }}</time>
+      <span><i class="bi bi-clock me-1" aria-hidden="true"></i>{{ event.date|date:"H:i" }}</span>
+      <span><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ event.location }}</span>
     </div>
   </div>
 </section>
@@ -26,7 +78,9 @@
 
         {% if event.image %}
         <img src="{{ event.image.url }}" alt="{{ event.title }}"
-             class="img-fluid rounded mb-4 w-100" style="max-height:450px;object-fit:cover;">
+             class="img-fluid rounded mb-4 w-100" style="max-height:450px;object-fit:cover;"
+             width="800" height="450"
+             loading="eager" fetchpriority="high" decoding="async">
         {% endif %}
 
         <div class="card border-0 shadow-sm p-4 mb-4">

@@ -90,7 +90,8 @@
 /* ── Hero ─────────────────────────────────────────── */
 .hero {
   min-height: 90vh;
-  background-image: url('/static/images/hero.webp');
+  /* path relativo al CSS: Django ManifestStaticFilesStorage riscrive l'hash. */
+  background-image: url('../images/hero.webp');
   background-size: cover;
   background-position: center;
   position: relative;

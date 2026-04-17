@@ -2,6 +2,23 @@
 {% load static %}
 
 {% block title %}{{ doc.title }} — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}{{ doc.get_meta_description }}{% endblock %}
+{% block og_title %}{{ doc.title }}{% endblock %}
+{% block og_description %}{{ doc.get_meta_description }}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ SITE_URL }}/" },
+    { "@type": "ListItem", "position": 2, "name": "Documenti", "item": "{{ SITE_URL }}{% url 'documents_list' %}" },
+    { "@type": "ListItem", "position": 3, "name": "{{ doc.title|escapejs }}", "item": "{{ CANONICAL_URL }}" }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 

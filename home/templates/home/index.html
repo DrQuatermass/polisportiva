@@ -1,7 +1,32 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Polisportiva Sanmarinese — Home{% endblock %}
+{% block title %}Polisportiva Sanmarinese ASD-APS — San Marino di Carpi{% endblock %}
+{% block meta_description %}Polisportiva Sanmarinese ASD-APS: scuola di ciclismo, squadra agonistica, eventi e attività sociali a San Marino di Carpi. Iscrizioni aperte per ragazzi dai 5 ai 14 anni.{% endblock %}
+{% block og_title %}Polisportiva Sanmarinese ASD-APS{% endblock %}
+{% block og_description %}Scuola di ciclismo, squadra agonistica e impegno sociale a San Marino di Carpi.{% endblock %}
+
+{% block preload %}
+  {# L'hero è l'LCP: precarichiamolo in formato webp. #}
+  <link rel="preload" as="image" href="{% static 'images/hero.webp' %}" fetchpriority="high">
+{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ SITE_NAME }}",
+  "url": "{{ SITE_URL }}/",
+  "inLanguage": "it-IT",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ SITE_URL }}/news/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endblock %}
 
 {% block content %}
 
@@ -31,10 +56,11 @@
         <div class="card h-100 card-hover border-0 shadow-sm">
           {% if item.image %}
           <div class="card-media">
-            <img src="{{ item.image.url }}" class="card-img-top card-media-img" alt="{{ item.title }}" loading="lazy">
+            <img src="{{ item.image.url }}" class="card-img-top card-media-img" alt="{{ item.title }}"
+                 width="400" height="225" loading="lazy" decoding="async">
           </div>
           {% else %}
-          <div class="card-media card-img-placeholder d-flex align-items-center justify-content-center bg-secondary">
+          <div class="card-media card-img-placeholder d-flex align-items-center justify-content-center bg-secondary" aria-hidden="true">
             <i class="bi bi-newspaper text-white fs-1"></i>
           </div>
           {% endif %}
@@ -77,10 +103,11 @@
           <div class="card h-100 card-hover border-0 shadow-sm overflow-hidden">
             {% if event.image %}
             <div class="card-media">
-              <img src="{{ event.image.url }}" class="card-img-top card-media-img" alt="{{ event.title }}" loading="lazy">
+              <img src="{{ event.image.url }}" class="card-img-top card-media-img" alt="{{ event.title }}"
+                   width="400" height="225" loading="lazy" decoding="async">
             </div>
             {% else %}
-            <div class="card-media d-flex align-items-center justify-content-center bg-dark">
+            <div class="card-media d-flex align-items-center justify-content-center bg-dark" aria-hidden="true">
               <i class="bi bi-calendar-event text-white fs-1"></i>
             </div>
             {% endif %}

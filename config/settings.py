@@ -79,7 +79,18 @@ SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', False)
 CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', False)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-SITE_URL = 'https://polisportivasanmarinese.it'  # usato per condivisione social
+# Header di sicurezza aggiuntivi (utili per Lighthouse "Best Practices")
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+SITE_URL = env('SITE_URL', 'https://polisportivasanmarinese.it')  # usato per condivisione social e meta SEO
+SITE_NAME = 'Polisportiva Sanmarinese'
+SITE_DESCRIPTION = (
+    'Polisportiva Sanmarinese ASD-APS: scuola di ciclismo, squadra agonistica, '
+    'eventi e attività sociali a San Marino di Carpi.'
+)
 GOOGLE_ANALYTICS_ID = env('GOOGLE_ANALYTICS_ID')
 GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION')
 
@@ -112,13 +123,32 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise subito dopo SecurityMiddleware per servire static
+    # con gzip/brotli e header di cache lunghi (Apache/Gunicorn).
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # GZip come fallback se whitenoise non copre una risposta.
+    'django.middleware.gzip.GZipMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',
 ]
+
+# Cache per-site: pagine anonime per 5 minuti in RAM locale.
+# In produzione con più worker Gunicorn considerare Redis.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'polisportiva-default',
+    }
+}
+CACHE_MIDDLEWARE_SECONDS = env_int('CACHE_MIDDLEWARE_SECONDS', 300)
+CACHE_MIDDLEWARE_KEY_PREFIX = 'polisp'
+CACHE_MIDDLEWARE_ALIAS = 'default'
 
 ROOT_URLCONF = 'config.urls'
 
@@ -134,6 +164,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'home.context_processors.analytics',
+                'home.context_processors.site',
             ],
         },
     },
@@ -202,6 +233,22 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# WhiteNoise + Manifest storage:
+# - collectstatic rinomina i file con hash (style.abc123.css)
+# - Precomprime in .gz e .br (brotli) grazie a whitenoise[brotli]
+# - Serve con Cache-Control: max-age=1 year, immutable
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365  # 1 anno sui file con hash
+WHITENOISE_USE_FINDERS = DEBUG  # in dev trova anche quelli non ancora collectati
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

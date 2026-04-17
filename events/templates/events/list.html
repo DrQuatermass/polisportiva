@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Eventi — Polisportiva Sanmarinese{% endblock %}
+{% block title %}Eventi sportivi e sociali — Polisportiva Sanmarinese{% endblock %}
+{% block meta_description %}Prossimi eventi, gare ciclistiche, manifestazioni sociali e iscrizioni agli eventi della Polisportiva Sanmarinese di Carpi.{% endblock %}
+{% block og_title %}Eventi — Polisportiva Sanmarinese{% endblock %}
 
 {% block content %}
 
@@ -24,7 +26,7 @@
           <div class="card h-100 card-hover border-0 shadow-sm overflow-hidden">
             {% if event.image %}
             <div class="card-media">
-              <img src="{{ event.image.url }}" class="card-img-top card-media-img" alt="{{ event.title }}" loading="lazy">
+              <img src="{{ event.image.url }}" class="card-img-top card-media-img" alt="{{ event.title }}" width="400" height="225" loading="lazy" decoding="async">
             </div>
             {% else %}
             <div class="card-media d-flex align-items-center justify-content-center bg-dark">
