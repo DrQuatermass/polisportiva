@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Cookie Policy — {{ SITE_NAME }}{% endblock %}
+{% block meta_description %}Informativa sui cookie utilizzati dal sito della Polisportiva Sanmarinese. Elenco, finalità e modalità di gestione del consenso ai sensi delle Linee Guida del Garante Privacy.{% endblock %}
+{% block robots %}index,follow{% endblock %}
+
+{% block content %}
+<section class="container py-5">
+  <div class="row">
+    <div class="col-lg-9 mx-auto">
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+          <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Cookie Policy</li>
+        </ol>
+      </nav>
+
+      <h1 class="h2 fw-bold mb-3">Cookie Policy</h1>
+      <p class="text-muted small">Ultimo aggiornamento: {% now "d F Y" %}</p>
+
+      <p>Questa pagina illustra quali cookie utilizziamo sul sito <strong>{{ SITE_URL }}</strong> in conformità alle <em>Linee Guida del Garante Privacy del 10 giugno 2021</em> (provv. n. 231/2021) e all'art. 122 del Codice Privacy.</p>
+
+      <h2 class="h4 mt-4">1. Che cosa sono i cookie</h2>
+      <p>I cookie sono piccoli file di testo che i siti web salvano sul dispositivo dell'utente per memorizzare informazioni (ad esempio la sessione di login o le preferenze linguistiche). Possono essere di prima parte (impostati dal nostro dominio) o di terze parti (impostati da altri servizi).</p>
+
+      <h2 class="h4 mt-4">2. Cookie utilizzati</h2>
+
+      <h3 class="h5 mt-3">Cookie strettamente necessari (sempre attivi)</h3>
+      <p>Questi cookie sono indispensabili al funzionamento del sito e <strong>non</strong> richiedono il consenso dell'utente.</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle small">
+          <thead class="table-light">
+            <tr>
+              <th>Nome</th>
+              <th>Fornitore</th>
+              <th>Finalità</th>
+              <th>Durata</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>sessionid</code></td>
+              <td>{{ SITE_URL }}</td>
+              <td>Gestione sessione utente (area amministrativa).</td>
+              <td>Sessione</td>
+            </tr>
+            <tr>
+              <td><code>csrftoken</code></td>
+              <td>{{ SITE_URL }}</td>
+              <td>Protezione da attacchi CSRF sui moduli.</td>
+              <td>1 anno</td>
+            </tr>
+            <tr>
+              <td><code>cc_cookie</code></td>
+              <td>{{ SITE_URL }}</td>
+              <td>Memorizza le preferenze di consenso cookie dell'utente.</td>
+              <td>6 mesi</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="h5 mt-3">Cookie di statistica (richiedono consenso)</h3>
+      <p>Attivati solo se l'utente accetta la categoria "Statistiche" dal banner. Raccolgono informazioni in forma aggregata per analizzare il traffico del sito.</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle small">
+          <thead class="table-light">
+            <tr>
+              <th>Nome</th>
+              <th>Fornitore</th>
+              <th>Finalità</th>
+              <th>Durata</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>_ga</code></td>
+              <td>Google Analytics</td>
+              <td>Distinguere gli utenti unici (IP anonimizzato).</td>
+              <td>2 anni</td>
+            </tr>
+            <tr>
+              <td><code>_ga_&lt;ID&gt;</code></td>
+              <td>Google Analytics</td>
+              <td>Mantenere lo stato della sessione GA4.</td>
+              <td>2 anni</td>
+            </tr>
+            <tr>
+              <td><code>_gid</code></td>
+              <td>Google Analytics</td>
+              <td>Distinguere gli utenti (universo aggiornato).</td>
+              <td>24 ore</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">Informativa completa Google: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a> — Opt-out GA: <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">tools.google.com/dlpage/gaoptout</a>.</p>
+
+      <h2 class="h4 mt-4">3. Come gestire il consenso</h2>
+      <p>Al primo accesso il sito mostra un banner con tre opzioni di pari evidenza: <strong>Accetta tutti</strong>, <strong>Rifiuta tutti</strong>, <strong>Preferenze</strong>. Puoi modificare la tua scelta in qualsiasi momento cliccando su <a href="#" data-cc="show-preferencesModal">Preferenze cookie</a> (link presente nel footer di ogni pagina).</p>
+      <p>In alternativa puoi bloccare o cancellare i cookie dalle impostazioni del tuo browser:</p>
+      <ul>
+        <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener">Google Chrome</a></li>
+        <li><a href="https://support.mozilla.org/it/kb/Gestione%20dei%20cookie" target="_blank" rel="noopener">Mozilla Firefox</a></li>
+        <li><a href="https://support.apple.com/it-it/guide/safari/sfri11471/mac" target="_blank" rel="noopener">Safari</a></li>
+        <li><a href="https://support.microsoft.com/it-it/microsoft-edge" target="_blank" rel="noopener">Microsoft Edge</a></li>
+      </ul>
+
+      <h2 class="h4 mt-4">4. Titolare del trattamento</h2>
+      <p>
+        <strong>Polisportiva Sanmarinese ASD-APS</strong> — San Marino di Carpi (MO)<br>
+        Email: <a href="mailto:polisportivasanmarinese@gmail.com">polisportivasanmarinese@gmail.com</a>
+      </p>
+      <p>Per la disciplina generale del trattamento dei dati si rimanda alla <a href="{% url 'privacy_policy' %}">Privacy Policy</a>.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
