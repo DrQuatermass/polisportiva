@@ -19,6 +19,10 @@
       <a href="{% url 'document_download' doc.slug %}" class="btn btn-sm btn-outline-danger">
         <i class="bi bi-download me-1"></i>Scarica PDF
       </a>
+      {% elif doc.has_content %}
+      <a href="{{ doc.get_absolute_url }}" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-printer me-1"></i>Salva PDF
+      </a>
       {% endif %}
       {% if not doc.has_content and not doc.has_file %}
       <span class="btn btn-sm btn-outline-secondary disabled">Non disponibile</span>

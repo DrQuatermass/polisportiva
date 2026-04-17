@@ -36,6 +36,24 @@
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-lg-8">
+        <div class="document-actions d-flex gap-2 flex-wrap mb-4">
+          {% if doc.has_file %}
+          <a href="{% url 'document_download' doc.slug %}" class="btn btn-danger">
+            <i class="bi bi-download me-1"></i>Scarica PDF
+          </a>
+          {% elif doc.has_content %}
+          <button type="button" class="btn btn-danger" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Salva in PDF
+          </button>
+          {% endif %}
+          <a href="{% url 'documents_list' %}" class="btn btn-outline-danger">
+            <i class="bi bi-arrow-left me-1"></i>Torna ai documenti
+          </a>
+        </div>
+
+        <article class="document-print-page">
+          <h1 class="d-none d-print-block mb-3">{{ doc.title }}</h1>
+          <p class="d-none d-print-block text-muted mb-4">{{ doc.get_category_display }}</p>
 
         {% if doc.description %}
         <p class="lead text-muted mb-4">{{ doc.description }}</p>
@@ -46,6 +64,7 @@
           {{ doc.content|safe }}
         </div>
         {% endif %}
+        </article>
 
         {% if doc.has_file %}
         <div class="mt-5 p-4 rounded border border-danger-subtle bg-light d-flex align-items-center gap-3">
@@ -61,7 +80,7 @@
         {% endif %}
 
         <hr class="my-5">
-        <a href="{% url 'documents_list' %}" class="btn btn-outline-danger">
+        <a href="{% url 'documents_list' %}" class="btn btn-outline-danger document-actions">
           <i class="bi bi-arrow-left me-1"></i>Torna ai documenti
         </a>
 
