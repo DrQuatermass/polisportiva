@@ -294,13 +294,28 @@ class CalendarioView(TemplateView):
                     current_day += timedelta(days=1)
                 continue
 
-            day_key = start.date()
-            occupied_by_day[day_key].append(
-                {
-                    'time': f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}",
-                    'rooms': rooms,
-                }
-            )
+            current_day = start.date()
+            end_day = end.date()
+            if end.time() == datetime.min.time() and end_day > current_day:
+                end_day -= timedelta(days=1)
+
+            while current_day <= end_day:
+                if current_day == start.date() and current_day == end.date():
+                    time_label = f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
+                elif current_day == start.date():
+                    time_label = f"Dalle {start.strftime('%H:%M')}"
+                elif current_day == end.date():
+                    time_label = f"Fino alle {end.strftime('%H:%M')}"
+                else:
+                    time_label = 'Tutto il giorno'
+
+                occupied_by_day[current_day].append(
+                    {
+                        'time': time_label,
+                        'rooms': rooms,
+                    }
+                )
+                current_day += timedelta(days=1)
 
         return occupied_by_day
 
