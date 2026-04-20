@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from ckeditor.widgets import CKEditorWidget
 
-from .models import Event, Registration, RegistrationAnswer, RegistrationField
+from .models import Event, EventImage, Registration, RegistrationAnswer, RegistrationField
 
 
 class EventAdminForm(forms.ModelForm):
@@ -21,6 +21,23 @@ class RegistrationFieldInline(admin.TabularInline):
     extra = 1
     fields = ['order', 'field_type', 'label', 'required', 'options', 'help_text']
     ordering = ['order']
+
+
+class EventImageInline(admin.TabularInline):
+    model = EventImage
+    extra = 3
+    fields = ['order', 'image', 'caption', 'preview']
+    readonly_fields = ['preview']
+    ordering = ['order', 'id']
+
+    def preview(self, obj):
+        if not obj.pk or not obj.image:
+            return '-'
+        return format_html(
+            '<img src="{}" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:4px;">',
+            obj.image.url,
+        )
+    preview.short_description = 'Anteprima'
 
 
 class RegistrationAnswerInline(admin.TabularInline):
@@ -47,7 +64,7 @@ class EventAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description', 'location']
     ordering = ['date']
     prepopulated_fields = {'slug': ('title',)}
-    inlines = [RegistrationFieldInline]
+    inlines = [EventImageInline, RegistrationFieldInline]
 
     fieldsets = [
         ('Evento', {

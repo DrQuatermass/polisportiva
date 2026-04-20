@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from ckeditor.widgets import CKEditorWidget
 
-from .models import News
+from .models import News, NewsImage
 
 
 class NewsAdminForm(forms.ModelForm):
@@ -16,6 +16,23 @@ class NewsAdminForm(forms.ModelForm):
         }
 
 
+class NewsImageInline(admin.TabularInline):
+    model = NewsImage
+    extra = 3
+    fields = ['order', 'image', 'caption', 'preview']
+    readonly_fields = ['preview']
+    ordering = ['order', 'id']
+
+    def preview(self, obj):
+        if not obj.pk or not obj.image:
+            return '-'
+        return format_html(
+            '<img src="{}" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:4px;">',
+            obj.image.url,
+        )
+    preview.short_description = 'Anteprima'
+
+
 @admin.register(News)
 class NewsAdmin(admin.ModelAdmin):
     form = NewsAdminForm
@@ -25,6 +42,7 @@ class NewsAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
     prepopulated_fields = {'slug': ('title',)}
     list_editable = ['published']
+    inlines = [NewsImageInline]
 
     fieldsets = (
         (None, {

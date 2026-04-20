@@ -107,6 +107,31 @@
           {{ event.description|safe }}
         </div>
 
+        {% with gallery_images=event.gallery_images.all %}
+        {% if gallery_images %}
+        <section class="mb-4" aria-labelledby="event-gallery-title">
+          <h2 id="event-gallery-title" class="h4 fw-bold mb-3">Galleria fotografica</h2>
+          <div class="row g-3">
+            {% for photo in gallery_images %}
+            <div class="col-6 col-md-4">
+              <a href="{{ photo.image.url }}" target="_blank" rel="noopener" class="d-block">
+                <img src="{{ photo.image.url }}"
+                     alt="{{ photo.caption|default:event.title }}"
+                     class="img-fluid rounded w-100"
+                     style="aspect-ratio:4/3;object-fit:cover;"
+                     width="360" height="270"
+                     loading="lazy" decoding="async">
+              </a>
+              {% if photo.caption %}
+              <p class="small text-muted mt-1 mb-0">{{ photo.caption }}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+        {% endwith %}
+
         {% if event.registration_enabled %}
         <hr class="my-4">
 
