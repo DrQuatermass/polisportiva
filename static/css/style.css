@@ -508,6 +508,27 @@
   background: #64748b;
 }
 
+.gallery-photo-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.gallery-photo-button:focus-visible {
+  outline: 3px solid rgba(220, 38, 38, 0.45);
+  outline-offset: 3px;
+}
+
+.gallery-modal-image {
+  display: block;
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+}
+
 @media (max-width: 767.98px) {
   .calendar-toolbar {
     gap: 0.5rem;

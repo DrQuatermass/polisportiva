@@ -83,14 +83,17 @@
           <div class="row g-3">
             {% for photo in gallery_images %}
             <div class="col-6 col-md-4">
-              <a href="{{ photo.image.url }}" target="_blank" rel="noopener" class="d-block">
+              <button type="button"
+                      class="gallery-photo-button"
+                      data-gallery-src="{{ photo.image.url }}"
+                      data-gallery-alt="{{ photo.caption|default:news.title }}">
                 <img src="{{ photo.image.url }}"
                      alt="{{ photo.caption|default:news.title }}"
                      class="img-fluid rounded w-100"
                      style="aspect-ratio:4/3;object-fit:cover;"
                      width="360" height="270"
                      loading="lazy" decoding="async">
-              </a>
+              </button>
               {% if photo.caption %}
               <p class="small text-muted mt-1 mb-0">{{ photo.caption }}</p>
               {% endif %}
@@ -98,6 +101,19 @@
             {% endfor %}
           </div>
         </section>
+        <div class="modal fade" id="newsGalleryModal" tabindex="-1" aria-labelledby="newsGalleryModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-dark">
+              <div class="modal-header border-0">
+                <h2 class="modal-title fs-6 text-white" id="newsGalleryModalLabel">{{ news.title }}</h2>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+              </div>
+              <div class="modal-body pt-0">
+                <img src="" alt="" class="gallery-modal-image" id="newsGalleryModalImage">
+              </div>
+            </div>
+          </div>
+        </div>
         {% endif %}
         {% endwith %}
         <hr class="my-4">
@@ -109,4 +125,33 @@
   </div>
 </article>
 
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const modalElement = document.getElementById('newsGalleryModal');
+  const modalImage = document.getElementById('newsGalleryModalImage');
+  const modalTitle = document.getElementById('newsGalleryModalLabel');
+  if (!modalElement || !modalImage || !window.bootstrap) {
+    return;
+  }
+  const modal = new bootstrap.Modal(modalElement);
+  document.querySelectorAll('[data-gallery-src]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const imageSrc = button.getAttribute('data-gallery-src');
+      const imageAlt = button.getAttribute('data-gallery-alt') || '';
+      modalImage.src = imageSrc;
+      modalImage.alt = imageAlt;
+      modalTitle.textContent = imageAlt || '{{ news.title|escapejs }}';
+      modal.show();
+    });
+  });
+  modalElement.addEventListener('hidden.bs.modal', function () {
+    modalImage.removeAttribute('src');
+    modalImage.alt = '';
+  });
+});
+</script>
 {% endblock %}
