@@ -107,3 +107,35 @@ END:VCALENDAR
         self.assertIn(date(2026, 4, 20), occupied_by_day)
         self.assertIn(date(2026, 4, 21), occupied_by_day)
         self.assertNotIn(date(2026, 4, 22), occupied_by_day)
+
+    @override_settings(GOOGLE_CALENDAR_ICS_URL='https://example.test/calendar.ics')
+    def test_same_time_slots_are_merged_with_unique_rooms(self):
+        occupied_by_day = self._occupied_from_ics(
+            """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART:20260420T180000
+DTEND:20260420T200000
+SUMMARY:Palestra allenamento
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260420T180000
+DTEND:20260420T200000
+SUMMARY:Saletta riunione
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260420T180000
+DTEND:20260420T200000
+SUMMARY:Palestra allenamento duplicato
+END:VEVENT
+END:VCALENDAR
+"""
+        )
+
+        slots = occupied_by_day[date(2026, 4, 20)]
+
+        self.assertEqual(len(slots), 1)
+        self.assertEqual(slots[0]['time'], '18:00 - 20:00')
+        self.assertEqual(
+            [room['key'] for room in slots[0]['rooms']],
+            ['palestra', 'saletta'],
+        )

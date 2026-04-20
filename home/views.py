@@ -317,7 +317,32 @@ class CalendarioView(TemplateView):
                 )
                 current_day += timedelta(days=1)
 
-        return occupied_by_day
+        return self._merge_duplicate_slots(occupied_by_day)
+
+    @staticmethod
+    def _merge_duplicate_slots(occupied_by_day):
+        optimized = defaultdict(list)
+        for day, slots in occupied_by_day.items():
+            slot_by_time = {}
+            for slot in slots:
+                time_label = slot['time']
+                if time_label not in slot_by_time:
+                    slot_by_time[time_label] = {
+                        'time': time_label,
+                        'rooms': [],
+                    }
+                    optimized[day].append(slot_by_time[time_label])
+
+                existing_room_keys = {
+                    room['key'] for room in slot_by_time[time_label]['rooms']
+                }
+                for room in slot['rooms']:
+                    if room['key'] in existing_room_keys:
+                        continue
+                    slot_by_time[time_label]['rooms'].append(room)
+                    existing_room_keys.add(room['key'])
+
+        return optimized
 
     def _selected_month(self):
         raw = self.request.GET.get('month', '')

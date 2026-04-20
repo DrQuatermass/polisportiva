@@ -70,7 +70,7 @@
 
             {% if day.occupied %}
             <ul class="calendar-day-slots">
-              {% for slot in day.slots|slice:":2" %}
+              {% for slot in day.slots %}
               <li class="calendar-slot">
                 <span class="calendar-slot-time">{{ slot.time }}</span>
                 <span class="calendar-slot-rooms">
@@ -80,9 +80,6 @@
                 </span>
               </li>
               {% endfor %}
-              {% if day.slots|length > 2 %}
-              <li>+ altri slot</li>
-              {% endif %}
             </ul>
             {% endif %}
           </div>
