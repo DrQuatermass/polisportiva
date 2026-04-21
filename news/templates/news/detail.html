@@ -7,6 +7,8 @@
 {% block og_title %}{{ news.title }}{% endblock %}
 {% block og_description %}{{ news.get_meta_description }}{% endblock %}
 {% block og_image %}{% if news.get_og_image_url %}{{ SITE_URL }}{{ news.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+{% block og_image_secure_url %}{% if news.get_og_image_url %}{{ SITE_URL }}{{ news.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+{% block og_image_type %}{% if news.get_og_image_url %}image/webp{% else %}image/png{% endif %}{% endblock %}
 {% block twitter_title %}{{ news.title }}{% endblock %}
 {% block twitter_description %}{{ news.get_meta_description }}{% endblock %}
 {% block twitter_image %}{% if news.get_og_image_url %}{{ SITE_URL }}{{ news.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
