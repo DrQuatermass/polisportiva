@@ -1,5 +1,6 @@
 from django.contrib.admin.sites import AdminSite
 from django.test import SimpleTestCase, override_settings
+from django.urls import reverse
 
 from .admin import NewsAdmin
 from .models import News
@@ -15,7 +16,7 @@ class NewsAdminFacebookShareTests(SimpleTestCase):
 
         self.assertIn(
             'https://www.facebook.com/sharer/sharer.php?u='
-            'https%3A%2F%2Fexample.test%2Fnews%2Fdove-si-corre%2F',
+            f'https%3A%2F%2Fexample.test{reverse("news_detail", kwargs={"slug": news.slug}).replace("/", "%2F")}',
             html,
         )
         self.assertNotIn('sharer.php?href=', html)

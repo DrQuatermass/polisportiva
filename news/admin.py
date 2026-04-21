@@ -1,4 +1,4 @@
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 from django.conf import settings
 from django import forms
@@ -59,7 +59,7 @@ class NewsAdmin(admin.ModelAdmin):
 
     def facebook_share(self, obj):
         site = getattr(settings, 'SITE_URL', '').rstrip('/\\')
-        url = f'{site}/news/{obj.slug}/'
+        url = urljoin(f'{site}/', obj.get_absolute_url().lstrip('/'))
         share_url = f'https://www.facebook.com/sharer/sharer.php?{urlencode({"u": url})}'
         return format_html(
             '<a href="{}" target="_blank" rel="noopener" '
