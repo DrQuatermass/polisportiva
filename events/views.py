@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 
 import requests
 from django.conf import settings
@@ -16,6 +17,26 @@ from .forms import build_registration_form
 from .models import Event, Registration, RegistrationAnswer
 
 logger = logging.getLogger(__name__)
+
+
+def _paypal_error_payload(resp):
+    try:
+        data = resp.json()
+    except ValueError:
+        data = {'message': resp.text}
+
+    message = data.get('message') or data.get('name') or resp.reason
+    details = data.get('details') or []
+    if details:
+        issues = [
+            detail.get('description') or detail.get('issue')
+            for detail in details
+            if detail.get('description') or detail.get('issue')
+        ]
+        if issues:
+            message = f'{message}: {"; ".join(issues)}'
+
+    return {'error': message, 'paypal': data}
 
 
 def _send_confirmation_email(registration):
@@ -173,20 +194,33 @@ def paypal_create_order(request, registration_id):
     registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
     try:
         token, base = _get_paypal_token()
+        amount_value = f'{registration.amount_paid:.2f}'
+        description = f'Iscrizione: {registration.event.title}'[:127]
         resp = requests.post(
             f'{base}/v2/checkout/orders',
-            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+                'PayPal-Request-Id': str(uuid.uuid4()),
+            },
             json={
                 'intent': 'CAPTURE',
                 'purchase_units': [{
-                    'amount': {'currency_code': 'EUR', 'value': str(registration.amount_paid)},
-                    'description': f'Iscrizione: {registration.event.title}',
+                    'amount': {'currency_code': 'EUR', 'value': amount_value},
+                    'description': description,
                     'custom_id': str(registration.id),
                 }],
+                'application_context': {
+                    'shipping_preference': 'NO_SHIPPING',
+                    'user_action': 'PAY_NOW',
+                },
             },
             timeout=10,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            payload = _paypal_error_payload(resp)
+            logger.error('PayPal create order error %s: %s', resp.status_code, payload)
+            return JsonResponse(payload, status=502)
         return JsonResponse({'id': resp.json()['id']})
     except Exception as e:
         logger.error('PayPal create order error: %s', e)
@@ -204,7 +238,10 @@ def paypal_capture_order(request, registration_id):
             headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
             timeout=10,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            payload = _paypal_error_payload(resp)
+            logger.error('PayPal capture error %s: %s', resp.status_code, payload)
+            return JsonResponse(payload, status=502)
         result = resp.json()
         if result.get('status') == 'COMPLETED':
             registration.payment_status = 'completed'

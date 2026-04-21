@@ -69,7 +69,10 @@ paypal.Buttons({
         "Content-Type": "application/json"
       }
     })
-    .then(res => res.json())
+    .then(res => res.json().then(data => {
+      if (!res.ok) throw new Error(data.error || "Errore creazione ordine PayPal");
+      return data;
+    }))
     .then(data => {
       if (data.error) throw new Error(data.error);
       return data.id;
@@ -84,7 +87,10 @@ paypal.Buttons({
       },
       body: JSON.stringify({ orderID: data.orderID })
     })
-    .then(res => res.json())
+    .then(res => res.json().then(data => {
+      if (!res.ok) throw new Error(data.error || "Errore conferma pagamento PayPal");
+      return data;
+    }))
     .then(result => {
       if (result.status === "completed") {
         window.location.href = result.redirect;
@@ -95,7 +101,9 @@ paypal.Buttons({
   },
   onError: function(err) {
     console.error(err);
-    document.getElementById("paypal-error").classList.remove("d-none");
+    const errorBox = document.getElementById("paypal-error");
+    errorBox.textContent = err && err.message ? err.message : "Si e verificato un errore durante il pagamento. Riprova o contattaci.";
+    errorBox.classList.remove("d-none");
   }
 }).render("#paypal-button-container");
 </script>
