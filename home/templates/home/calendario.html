@@ -5,10 +5,17 @@
 {% block robots %}index,follow,noarchive{% endblock %}
 
 {% block content %}
+<section class="page-header py-5">
+  <div class="container">
+    <h1 class="fw-bold text-white mb-1">Calendario</h1>
+    <p class="text-white-75 mb-0">Disponibilita sale in tempo reale</p>
+  </div>
+</section>
+
 <section class="py-5">
   <div class="container">
-    <h1 class="section-title text-center mb-2">Calendario</h1>
-    <p class="text-center text-muted mb-4">Disponibilita sale in tempo reale.</p>
+    <h2 class="section-title mb-2">Prenotazioni sale</h2>
+    <p class="text-muted mb-4">Consulta le disponibilita e contattaci per prenotare.</p>
 
     <div class="calendar-note alert alert-light border mb-3" role="note">
       <a href="{% url 'contatti' %}">Contattaci</a> per prenotare.

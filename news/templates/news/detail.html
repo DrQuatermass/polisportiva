@@ -73,7 +73,7 @@
              width="800" height="450"
              loading="eager" fetchpriority="high" decoding="async">
         {% endif %}
-        <div class="news-content fs-5 lh-lg">
+        <div class="news-content lh-lg">
           {{ news.content|safe }}
         </div>
         {% with gallery_images=news.gallery_images.all %}
