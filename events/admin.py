@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django import forms
 from django.contrib import admin
@@ -95,9 +97,9 @@ class EventAdmin(admin.ModelAdmin):
     iscritti.short_description = 'Iscritti'
 
     def facebook_share(self, obj):
-        site = getattr(settings, 'SITE_URL', '').rstrip('/')
+        site = getattr(settings, 'SITE_URL', '').rstrip('/\\')
         url = f'{site}/eventi/{obj.slug}/'
-        share_url = f'https://www.facebook.com/sharer/sharer.php?u={url}'
+        share_url = f'https://www.facebook.com/sharer/sharer.php?{urlencode({"href": url})}'
         return format_html(
             '<a href="{}" target="_blank" rel="noopener" '
             'style="display:inline-flex;align-items:center;gap:6px;'

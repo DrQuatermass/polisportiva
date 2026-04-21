@@ -1,9 +1,11 @@
 from datetime import timedelta
 
-from django.test import TestCase
+from django.contrib.admin.sites import AdminSite
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from .admin import EventAdmin
 from .models import Event
 
 
@@ -40,3 +42,26 @@ class EventPublicationTests(TestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertNotContains(list_response, event.title)
         self.assertEqual(detail_response.status_code, 404)
+
+
+class EventAdminFacebookShareTests(TestCase):
+    @override_settings(SITE_URL='https://example.test\\')
+    def test_facebook_share_uses_href_parameter(self):
+        admin = EventAdmin(Event, AdminSite())
+        event = Event(
+            title='Granfondo',
+            slug='granfondo',
+            description='Evento',
+            date=timezone.now(),
+            location='Carpi',
+        )
+
+        html = str(admin.facebook_share(event))
+
+        self.assertIn(
+            'https://www.facebook.com/sharer/sharer.php?href='
+            'https%3A%2F%2Fexample.test%2Feventi%2Fgranfondo%2F',
+            html,
+        )
+        self.assertNotIn('sharer.php?u=', html)
+        self.assertNotIn('%5C', html)
