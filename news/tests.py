@@ -20,5 +20,7 @@ class NewsAdminFacebookShareTests(SimpleTestCase):
             '&amp;display=popup',
             html,
         )
+        self.assertIn('Copia link', html)
+        self.assertIn('Apri', html)
         self.assertNotIn('share.php?href=', html)
         self.assertNotIn('%5C', html)
