@@ -61,17 +61,14 @@ class EventAdminFacebookShareTests(TestCase):
 
         html = str(admin.facebook_share(event))
 
-        self.assertIn(
-            'https://www.facebook.com/share.php?u='
-            f'https%3A%2F%2Fexample.test{reverse("event_detail", kwargs={"slug": event.slug}).replace("/", "%2F")}'
-            '&amp;display=popup',
-            html,
-        )
+        self.assertIn(f'https://example.test{reverse("event_detail", kwargs={"slug": event.slug})}', html)
         self.assertIn('Copia link', html)
-        self.assertIn('Apri', html)
+        self.assertIn('Pagina', html)
         self.assertIn(
             'https://www.facebook.com/profile.php?id=100057579972656',
             html,
         )
-        self.assertNotIn('share.php?href=', html)
+        self.assertNotIn('Apri', html)
+        self.assertNotIn('Facebook', html)
+        self.assertNotIn('share.php', html)
         self.assertNotIn('%5C', html)

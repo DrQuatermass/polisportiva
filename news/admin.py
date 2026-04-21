@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urljoin
 
 from django.conf import settings
 from django import forms
@@ -61,26 +61,17 @@ class NewsAdmin(admin.ModelAdmin):
         site = getattr(settings, 'SITE_URL', '').rstrip('/\\')
         page_url = getattr(settings, 'FACEBOOK_PAGE_URL', 'https://www.facebook.com/')
         url = urljoin(f'{site}/', obj.get_absolute_url().lstrip('/'))
-        share_url = f'https://www.facebook.com/share.php?{urlencode({"u": url, "display": "popup"})}'
         return format_html(
             '<div style="display:flex;gap:6px;align-items:center;white-space:nowrap;">'
             '<button type="button" data-url="{}" onclick="navigator.clipboard.writeText(this.dataset.url);this.textContent=\'Copiato\';" '
             'style="border:0;background:#198754;color:#fff;padding:4px 10px;border-radius:5px;font-size:0.82em;font-weight:600;cursor:pointer;">'
             'Copia link</button>'
             '<a href="{}" target="_blank" rel="noopener" '
-            'style="display:inline-flex;align-items:center;background:#6c757d;color:#fff;padding:4px 10px;border-radius:5px;'
-            'text-decoration:none;font-size:0.82em;font-weight:600;">Apri</a>'
-            '<a href="{}" target="_blank" rel="noopener" '
             'style="display:inline-flex;align-items:center;background:#0d6efd;color:#fff;padding:4px 10px;border-radius:5px;'
             'text-decoration:none;font-size:0.82em;font-weight:600;">Pagina</a>'
-            '<a href="{}" target="_blank" rel="noopener" '
-            'style="display:inline-flex;align-items:center;background:#1877F2;color:#fff;padding:4px 10px;border-radius:5px;'
-            'text-decoration:none;font-size:0.82em;font-weight:600;">Facebook</a>'
             '</div>',
             url,
-            url,
             page_url,
-            share_url,
         )
     facebook_share.short_description = 'Facebook'
     facebook_share.allow_tags = True
