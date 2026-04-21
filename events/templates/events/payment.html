@@ -36,12 +36,18 @@
           <h2 class="h5 fw-bold mb-3">
             <i class="bi bi-paypal text-primary me-2"></i>Paga con PayPal
           </h2>
+          {% if paypal_client_id %}
           <p class="text-muted small mb-4">Clicca il pulsante per completare il pagamento in modo sicuro tramite PayPal. Puoi usare anche una carta di credito senza avere un account PayPal.</p>
 
           <div id="paypal-button-container"></div>
           <div id="paypal-error" class="alert alert-danger mt-3 d-none">
             Si è verificato un errore durante il pagamento. Riprova o contattaci.
           </div>
+          {% else %}
+          <div class="alert alert-warning mb-0">
+            PayPal non e ancora configurato. Contatta la societa per completare l'iscrizione.
+          </div>
+          {% endif %}
         </div>
 
       </div>
@@ -49,6 +55,7 @@
   </div>
 </section>
 
+{% if paypal_client_id %}
 <script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=EUR"></script>
 <script>
 const registrationId = "{{ registration.id }}";
@@ -92,4 +99,5 @@ paypal.Buttons({
   }
 }).render("#paypal-button-container");
 </script>
+{% endif %}
 {% endblock %}

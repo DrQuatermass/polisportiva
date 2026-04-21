@@ -153,6 +153,9 @@ def event_registration_confirm(request, registration_id):
 
 
 def _get_paypal_token():
+    if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
+        raise RuntimeError('Credenziali PayPal non configurate')
+
     mode = getattr(settings, 'PAYPAL_MODE', 'sandbox')
     base = 'https://api-m.sandbox.paypal.com' if mode == 'sandbox' else 'https://api-m.paypal.com'
     resp = requests.post(

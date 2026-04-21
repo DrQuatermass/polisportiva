@@ -285,3 +285,4 @@ CKEDITOR_CONFIGS = {
 # Credenziali: https://developer.paypal.com/
 PAYPAL_MODE = env('PAYPAL_MODE', 'sandbox')       # 'sandbox' oppure 'live' in produzione
 PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID')
+PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET')
