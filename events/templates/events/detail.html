@@ -6,12 +6,12 @@
 {% block og_type %}event{% endblock %}
 {% block og_title %}{{ event.title }}{% endblock %}
 {% block og_description %}{{ event.get_meta_description }}{% endblock %}
-{% block og_image %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endblock %}
-{% block og_image_secure_url %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endblock %}
-{% block og_image_type %}image/png{% endblock %}
+{% block og_image %}{{ SITE_URL }}{% url 'event_social_image' event.slug %}{% endblock %}
+{% block og_image_secure_url %}{{ SITE_URL }}{% url 'event_social_image' event.slug %}{% endblock %}
+{% block og_image_type %}image/jpeg{% endblock %}
 {% block twitter_title %}{{ event.title }}{% endblock %}
 {% block twitter_description %}{{ event.get_meta_description }}{% endblock %}
-{% block twitter_image %}{% if event.get_og_image_url %}{{ SITE_URL }}{{ event.get_og_image_url }}{% else %}{{ SITE_URL }}{% static 'images/POL_SANMARINESE.png' %}{% endif %}{% endblock %}
+{% block twitter_image %}{{ SITE_URL }}{% url 'event_social_image' event.slug %}{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">

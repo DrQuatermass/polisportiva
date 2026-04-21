@@ -10,6 +10,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
+from config.social_images import social_image_response
+
 from .forms import build_registration_form
 from .models import Event, Registration, RegistrationAnswer
 
@@ -78,6 +80,11 @@ class EventDetailView(DetailView):
             context['reg_form'] = build_registration_form(event)
             context['paypal_client_id'] = getattr(settings, 'PAYPAL_CLIENT_ID', '')
         return context
+
+
+def event_social_image(request, slug):
+    event = get_object_or_404(Event, slug=slug, published=True)
+    return social_image_response(event.og_image or event.image)
 
 
 def event_register(request, slug):

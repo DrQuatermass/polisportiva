@@ -1,4 +1,7 @@
+from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView, ListView
+
+from config.social_images import social_image_response
 
 from .models import News
 
@@ -18,3 +21,8 @@ class NewsDetailView(DetailView):
     template_name = 'news/detail.html'
     context_object_name = 'news'
     slug_field = 'slug'
+
+
+def news_social_image(request, slug):
+    news = get_object_or_404(News, slug=slug)
+    return social_image_response(news.og_image or news.image)
