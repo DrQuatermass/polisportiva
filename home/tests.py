@@ -66,6 +66,14 @@ class SitemapTests(TestCase):
         self.assertNotIn('bozza', content)
 
 
+class SiteContextProcessorTests(TestCase):
+    @override_settings(SITE_URL='https://polisportivasanmarinese.it\\')
+    def test_site_url_strips_forward_and_backslashes(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertEqual(response.context['SITE_URL'], 'https://polisportivasanmarinese.it')
+
+
 class CalendarioViewTests(TestCase):
     def _occupied_from_ics(self, ics):
         with patch('home.views.urlopen', return_value=_FakeIcsResponse(ics)):

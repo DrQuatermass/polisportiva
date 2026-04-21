@@ -10,7 +10,7 @@ def analytics(request):
 
 def site(request):
     """Espone nome, descrizione e URL canonico del sito ai template (per SEO/OG)."""
-    site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/\\')
     # URL assoluto della pagina corrente (evita duplicazione di https se build_absolute_uri in HTTPS)
     try:
         canonical_url = request.build_absolute_uri(request.path)
