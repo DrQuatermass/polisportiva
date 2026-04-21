@@ -45,7 +45,7 @@ class EventPublicationTests(TestCase):
 
 
 class EventAdminFacebookShareTests(TestCase):
-    @override_settings(SITE_URL='https://example.test\\')
+    @override_settings(SITE_URL='https://example.test\\', FACEBOOK_PAGE_ID='100057579972656')
     def test_facebook_share_uses_encoded_url_parameter(self):
         admin = EventAdmin(Event, AdminSite())
         event = Event(
@@ -66,5 +66,9 @@ class EventAdminFacebookShareTests(TestCase):
         )
         self.assertIn('Copia link', html)
         self.assertIn('Apri', html)
+        self.assertIn(
+            'https://business.facebook.com/latest/composer?asset_id=100057579972656',
+            html,
+        )
         self.assertNotIn('share.php?href=', html)
         self.assertNotIn('%5C', html)

@@ -59,8 +59,10 @@ class NewsAdmin(admin.ModelAdmin):
 
     def facebook_share(self, obj):
         site = getattr(settings, 'SITE_URL', '').rstrip('/\\')
+        page_id = getattr(settings, 'FACEBOOK_PAGE_ID', '')
         url = urljoin(f'{site}/', obj.get_absolute_url().lstrip('/'))
         share_url = f'https://www.facebook.com/share.php?{urlencode({"u": url, "display": "popup"})}'
+        business_url = f'https://business.facebook.com/latest/composer?{urlencode({"asset_id": page_id})}'
         return format_html(
             '<div style="display:flex;gap:6px;align-items:center;white-space:nowrap;">'
             '<button type="button" data-url="{}" onclick="navigator.clipboard.writeText(this.dataset.url);this.textContent=\'Copiato\';" '
@@ -70,11 +72,15 @@ class NewsAdmin(admin.ModelAdmin):
             'style="display:inline-flex;align-items:center;background:#6c757d;color:#fff;padding:4px 10px;border-radius:5px;'
             'text-decoration:none;font-size:0.82em;font-weight:600;">Apri</a>'
             '<a href="{}" target="_blank" rel="noopener" '
+            'style="display:inline-flex;align-items:center;background:#0d6efd;color:#fff;padding:4px 10px;border-radius:5px;'
+            'text-decoration:none;font-size:0.82em;font-weight:600;">Business Suite</a>'
+            '<a href="{}" target="_blank" rel="noopener" '
             'style="display:inline-flex;align-items:center;background:#1877F2;color:#fff;padding:4px 10px;border-radius:5px;'
             'text-decoration:none;font-size:0.82em;font-weight:600;">Facebook</a>'
             '</div>',
             url,
             url,
+            business_url,
             share_url,
         )
     facebook_share.short_description = 'Facebook'
