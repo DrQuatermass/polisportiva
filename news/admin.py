@@ -60,7 +60,7 @@ class NewsAdmin(admin.ModelAdmin):
     def facebook_share(self, obj):
         site = getattr(settings, 'SITE_URL', '').rstrip('/\\')
         url = f'{site}/news/{obj.slug}/'
-        share_url = f'https://www.facebook.com/sharer/sharer.php?{urlencode({"href": url})}'
+        share_url = f'https://www.facebook.com/sharer/sharer.php?{urlencode({"u": url})}'
         return format_html(
             '<a href="{}" target="_blank" rel="noopener" '
             'style="display:inline-flex;align-items:center;gap:6px;'

@@ -46,7 +46,7 @@ class EventPublicationTests(TestCase):
 
 class EventAdminFacebookShareTests(TestCase):
     @override_settings(SITE_URL='https://example.test\\')
-    def test_facebook_share_uses_href_parameter(self):
+    def test_facebook_share_uses_encoded_url_parameter(self):
         admin = EventAdmin(Event, AdminSite())
         event = Event(
             title='Granfondo',
@@ -59,9 +59,9 @@ class EventAdminFacebookShareTests(TestCase):
         html = str(admin.facebook_share(event))
 
         self.assertIn(
-            'https://www.facebook.com/sharer/sharer.php?href='
+            'https://www.facebook.com/sharer/sharer.php?u='
             'https%3A%2F%2Fexample.test%2Feventi%2Fgranfondo%2F',
             html,
         )
-        self.assertNotIn('sharer.php?u=', html)
+        self.assertNotIn('sharer.php?href=', html)
         self.assertNotIn('%5C', html)
