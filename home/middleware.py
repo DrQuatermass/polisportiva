@@ -1,3 +1,8 @@
+import gzip as _gzip
+
+from django.utils.cache import patch_vary_headers
+
+
 class SocialCrawlerPlainHtmlMiddleware:
     """Serve plain, uncached HTML to Facebook crawlers.
 
@@ -22,8 +27,10 @@ class SocialCrawlerPlainHtmlMiddleware:
             response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response['Pragma'] = 'no-cache'
             response['Expires'] = '0'
-            response['Vary'] = 'User-Agent'
-            if response.has_header('Content-Encoding'):
+            patch_vary_headers(response, ['User-Agent'])
+            if response.get('Content-Encoding') == 'gzip':
+                response.content = _gzip.decompress(response.content)
                 del response['Content-Encoding']
+                del response['Content-Length']
 
         return response
