@@ -106,6 +106,7 @@ class IndexingAndAnalyticsTests(TestCase):
         self.assertIn('Disallow: /eventi/paypal/', content)
         self.assertIn('Sitemap: https://polisportivasanmarinese.it/sitemap.xml', content)
         self.assertNotIn('\\/sitemap.xml', content)
+        self.assertLess(content.index('User-agent: *'), content.index('User-agent: facebookexternalhit'))
 
 
 class CalendarioViewTests(TestCase):
