@@ -429,10 +429,10 @@ def robots_txt(request):
     site_url = getattr(settings, 'SITE_URL', '').rstrip('/\\')
     lines = [
         'User-agent: facebookexternalhit',
-        'Allow: /',
+        'Disallow:',
         '',
         'User-agent: Facebot',
-        'Allow: /',
+        'Disallow:',
         '',
         'User-agent: *',
         'Disallow: /admin/',
