@@ -103,14 +103,14 @@ class EventSeoTests(TestCase):
         event = Event(
             title='Pastasciuttata',
             slug='pastasciuttata',
-            description='Serata solidale. https://example.test/articolo dettagli utili.',
+            description='Serata solidale &amp; conviviale. https://example.test/articolo dettagli utili.',
             date=timezone.now() + timedelta(days=7),
             location='Carpi',
         )
 
         description = event.get_meta_description()
 
-        self.assertIn('Serata solidale.', description)
+        self.assertIn('Serata solidale & conviviale.', description)
         self.assertIn('dettagli utili.', description)
         self.assertNotIn('https://example.test', description)
 

@@ -59,13 +59,13 @@ class NewsSeoTests(TestCase):
         news = News(
             title='Dove si corre',
             slug='dove-si-corre-url',
-            content='Un aggiornamento importante. https://example.test/articolo altri dettagli.',
+            content='Un aggiornamento &amp; una notizia importante. https://example.test/articolo altri dettagli.',
             published=True,
         )
 
         description = news.get_meta_description()
 
-        self.assertIn('Un aggiornamento importante.', description)
+        self.assertIn('Un aggiornamento & una notizia importante.', description)
         self.assertIn('altri dettagli.', description)
         self.assertNotIn('https://example.test', description)
 

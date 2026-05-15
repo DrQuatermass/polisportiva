@@ -1,4 +1,5 @@
 import re
+from html import unescape
 
 from django.db import models
 from django.urls import reverse
@@ -49,11 +50,11 @@ class News(models.Model):
         super().save(*args, **kwargs)
 
     def get_meta_description(self):
-        text = self.meta_description or strip_tags(self.content or '')
+        text = unescape(self.meta_description or strip_tags(self.content or ''))
         text = re.sub(r'https?://\S+', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         if not text and self.meta_description:
-            text = strip_tags(self.content or '')
+            text = unescape(strip_tags(self.content or ''))
             text = re.sub(r'https?://\S+', '', text)
             text = re.sub(r'\s+', ' ', text).strip()
         return text[:157] + '…' if len(text) > 160 else text
