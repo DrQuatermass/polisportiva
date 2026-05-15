@@ -47,7 +47,9 @@ class NewsSeoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'property="og:type" content="article"')
         self.assertContains(response, f'property="og:url" content="https://polisportivasanmarinese.it{news.get_absolute_url()}"')
-        self.assertContains(response, f'property="og:image" content="https://polisportivasanmarinese.it{reverse("news_social_image", kwargs={"slug": news.slug})}"')
+        social_image_url = f'https://polisportivasanmarinese.it{reverse("news_social_image", kwargs={"slug": news.slug})}?v={int(news.created_at.timestamp())}'
+        self.assertContains(response, f'property="og:image" content="{social_image_url}"')
+        self.assertContains(response, f'property="og:image:url" content="{social_image_url}"')
         self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
         self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
 
