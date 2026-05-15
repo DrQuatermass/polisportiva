@@ -47,7 +47,7 @@ class EventPublicationTests(TestCase):
 class EventAdminFacebookShareTests(TestCase):
     @override_settings(
         SITE_URL='https://example.test\\',
-        FACEBOOK_PAGE_URL='https://www.facebook.com/profile.php?id=100057579972656',
+        FACEBOOK_PAGE_URL='https://www.facebook.com/psmcyclingteam',
     )
     def test_facebook_share_uses_encoded_url_parameter(self):
         admin = EventAdmin(Event, AdminSite())
@@ -65,10 +65,49 @@ class EventAdminFacebookShareTests(TestCase):
         self.assertIn('Copia link', html)
         self.assertIn('Pagina', html)
         self.assertIn(
-            'https://www.facebook.com/profile.php?id=100057579972656',
+            'https://www.facebook.com/psmcyclingteam',
             html,
         )
         self.assertNotIn('Apri', html)
         self.assertNotIn('Facebook', html)
         self.assertNotIn('share.php', html)
         self.assertNotIn('%5C', html)
+
+
+class EventSeoTests(TestCase):
+    @override_settings(SITE_URL='https://polisportivasanmarinese.it')
+    def test_detail_has_public_social_metadata_with_share_image(self):
+        event = Event.objects.create(
+            title='Granfondo',
+            slug='granfondo',
+            description='Evento sportivo aperto alla comunita.',
+            date=timezone.now() + timedelta(days=7),
+            location='Carpi',
+            published=True,
+        )
+
+        response = self.client.get(reverse('event_detail', kwargs={'slug': event.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'property="og:type" content="event"')
+        self.assertContains(response, f'property="og:url" content="https://polisportivasanmarinese.it{event.get_absolute_url()}"')
+        self.assertContains(response, f'property="og:image" content="https://polisportivasanmarinese.it{reverse("event_social_image", kwargs={"slug": event.slug})}"')
+        self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
+        self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
+
+    def test_social_image_endpoint_returns_jpeg_for_facebook(self):
+        event = Event.objects.create(
+            title='Granfondo',
+            slug='granfondo-social',
+            description='Evento pubblico',
+            date=timezone.now() + timedelta(days=7),
+            location='Carpi',
+            published=True,
+        )
+
+        response = self.client.get(reverse('event_social_image', kwargs={'slug': event.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/jpeg')
+        self.assertEqual(response.content[:3], b'\xff\xd8\xff')
+        self.assertIn('public', response['Cache-Control'])

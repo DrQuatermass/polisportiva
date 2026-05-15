@@ -22,7 +22,10 @@ class NewsDetailView(DetailView):
     context_object_name = 'news'
     slug_field = 'slug'
 
+    def get_queryset(self):
+        return News.objects.filter(published=True)
+
 
 def news_social_image(request, slug):
-    news = get_object_or_404(News, slug=slug)
+    news = get_object_or_404(News, slug=slug, published=True)
     return social_image_response(news.og_image or news.image)

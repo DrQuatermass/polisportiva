@@ -71,7 +71,35 @@ class SiteContextProcessorTests(TestCase):
     def test_site_url_strips_forward_and_backslashes(self):
         response = self.client.get(reverse('home'))
 
-        self.assertEqual(response.context['SITE_URL'], 'https://polisportivasanmarinese.it')
+        self.assertContains(response, '<link rel="canonical" href="https://polisportivasanmarinese.it/">')
+
+
+class IndexingAndAnalyticsTests(TestCase):
+    @override_settings(
+        SITE_URL='https://polisportivasanmarinese.it\\',
+        GOOGLE_ANALYTICS_ID='G-52F6EHTCWC',
+        GOOGLE_SITE_VERIFICATION='google-verification-token',
+    )
+    def test_home_renders_google_indexing_and_analytics_tags(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<link rel="canonical" href="https://polisportivasanmarinese.it/">')
+        self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
+        self.assertContains(response, 'name="google-site-verification" content="google-verification-token"')
+        self.assertContains(response, 'https://www.googletagmanager.com/gtag/js?id=G-52F6EHTCWC')
+        self.assertContains(response, "gtag('config', 'G-52F6EHTCWC'")
+
+    @override_settings(SITE_URL='https://polisportivasanmarinese.it\\')
+    def test_robots_txt_has_sitemap_without_trailing_backslash(self):
+        response = self.client.get(reverse('robots_txt'))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('Disallow: /admin/', content)
+        self.assertIn('Disallow: /eventi/paypal/', content)
+        self.assertIn('Sitemap: https://polisportivasanmarinese.it/sitemap.xml', content)
+        self.assertNotIn('\\/sitemap.xml', content)
 
 
 class CalendarioViewTests(TestCase):
