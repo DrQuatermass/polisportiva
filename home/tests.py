@@ -96,6 +96,8 @@ class IndexingAndAnalyticsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
+        self.assertIn('User-agent: facebookexternalhit', content)
+        self.assertIn('User-agent: Facebot', content)
         self.assertIn('Disallow: /admin/', content)
         self.assertIn('Disallow: /eventi/paypal/', content)
         self.assertIn('Sitemap: https://polisportivasanmarinese.it/sitemap.xml', content)

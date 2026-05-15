@@ -428,6 +428,12 @@ def robots_txt(request):
     """robots.txt generato dinamicamente con link al sitemap."""
     site_url = getattr(settings, 'SITE_URL', '').rstrip('/\\')
     lines = [
+        'User-agent: facebookexternalhit',
+        'Allow: /',
+        '',
+        'User-agent: Facebot',
+        'Allow: /',
+        '',
         'User-agent: *',
         'Disallow: /admin/',
         'Disallow: /eventi/paypal/',
