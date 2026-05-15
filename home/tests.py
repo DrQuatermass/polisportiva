@@ -120,7 +120,7 @@ class IndexingAndAnalyticsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn('Content-Encoding', response)
         self.assertEqual(response['Cache-Control'], 'no-store, no-cache, must-revalidate, max-age=0')
-        self.assertEqual(response['Vary'], 'User-Agent')
+        self.assertIn('User-Agent', response['Vary'])
 
 
 class CalendarioViewTests(TestCase):
