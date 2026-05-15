@@ -433,13 +433,6 @@ def robots_txt(request):
         'Disallow: /eventi/paypal/',
         'Disallow: /eventi/pagamento/',
         'Disallow: /eventi/conferma/',
-        'Allow: /',
-        '',
-        'User-agent: facebookexternalhit',
-        'Disallow:',
-        '',
-        'User-agent: Facebot',
-        'Disallow:',
         '',
         f'Sitemap: {site_url}/sitemap.xml',
     ]

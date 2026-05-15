@@ -98,15 +98,13 @@ class IndexingAndAnalyticsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn('User-agent: facebookexternalhit', content)
-        self.assertIn('User-agent: Facebot', content)
-        self.assertIn('User-agent: facebookexternalhit\nDisallow:', content)
-        self.assertIn('User-agent: Facebot\nDisallow:', content)
+        self.assertNotIn('facebookexternalhit', content)
+        self.assertNotIn('Facebot', content)
+        self.assertNotIn('Allow: /', content)
         self.assertIn('Disallow: /admin/', content)
         self.assertIn('Disallow: /eventi/paypal/', content)
         self.assertIn('Sitemap: https://polisportivasanmarinese.it/sitemap.xml', content)
         self.assertNotIn('\\/sitemap.xml', content)
-        self.assertLess(content.index('User-agent: *'), content.index('User-agent: facebookexternalhit'))
 
 
 class CalendarioViewTests(TestCase):
