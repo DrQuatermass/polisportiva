@@ -100,6 +100,9 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    window.POLISPORTIVA_GA_ID = '{{ GOOGLE_ANALYTICS_ID }}';
+    window.polisportivaGaLoaded = false;
+    window.polisportivaGaConfigured = false;
     // Consent Mode v2: default tutto negato finché l'utente non accetta
     gtag('consent', 'default', {
       'ad_storage': 'denied',
@@ -111,6 +114,46 @@
       'wait_for_update': 500
     });
     gtag('js', new Date());
+    window.loadPolisportivaGa = function () {
+      if (window.polisportivaGaLoaded) {
+        return;
+      }
+      const s = document.createElement('script');
+      s.id = 'ga4-script';
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}';
+      document.head.appendChild(s);
+      window.polisportivaGaLoaded = true;
+    };
+    window.enablePolisportivaGa = function () {
+      window.loadPolisportivaGa();
+      gtag('consent', 'update', { 'analytics_storage': 'granted' });
+      if (!window.polisportivaGaConfigured) {
+        gtag('config', '{{ GOOGLE_ANALYTICS_ID }}', {
+          'anonymize_ip': true,
+          'send_page_view': true
+        });
+        window.polisportivaGaConfigured = true;
+      }
+    };
+    window.disablePolisportivaGa = function () {
+      gtag('consent', 'update', { 'analytics_storage': 'denied' });
+      window.polisportivaGaConfigured = false;
+    };
+    window.syncPolisportivaGaConsent = function () {
+      if (!window.CookieConsent) {
+        return;
+      }
+      const serviceAccepted = typeof CookieConsent.acceptedService === 'function'
+        && CookieConsent.acceptedService('ga4', 'analytics');
+      const categoryAccepted = typeof CookieConsent.acceptedCategory === 'function'
+        && CookieConsent.acceptedCategory('analytics');
+      if (serviceAccepted || categoryAccepted) {
+        window.enablePolisportivaGa();
+      } else {
+        window.disablePolisportivaGa();
+      }
+    };
   </script>
   {% endif %}
 </head>
@@ -235,31 +278,37 @@
               label: 'Google Analytics 4',
               onAccept: () => {
                 {% if GOOGLE_ANALYTICS_ID %}
-                // Carica gtag.js solo ora
-                if (!document.getElementById('ga4-script')) {
-                  const s = document.createElement('script');
-                  s.id = 'ga4-script';
-                  s.async = true;
-                  s.src = 'https://www.googletagmanager.com/gtag/js?id={{ GOOGLE_ANALYTICS_ID }}';
-                  document.head.appendChild(s);
-                }
-                // Aggiorna Consent Mode v2
-                if (typeof gtag === 'function') {
-                  gtag('consent', 'update', { 'analytics_storage': 'granted' });
-                  gtag('config', '{{ GOOGLE_ANALYTICS_ID }}', { 'anonymize_ip': true });
+                if (typeof window.enablePolisportivaGa === 'function') {
+                  window.enablePolisportivaGa();
                 }
                 {% endif %}
               },
               onReject: () => {
                 {% if GOOGLE_ANALYTICS_ID %}
-                if (typeof gtag === 'function') {
-                  gtag('consent', 'update', { 'analytics_storage': 'denied' });
+                if (typeof window.disablePolisportivaGa === 'function') {
+                  window.disablePolisportivaGa();
                 }
                 {% endif %}
               }
             }
           }
         }
+      },
+
+      onConsent: () => {
+        {% if GOOGLE_ANALYTICS_ID %}
+        if (typeof window.syncPolisportivaGaConsent === 'function') {
+          window.syncPolisportivaGaConsent();
+        }
+        {% endif %}
+      },
+
+      onChange: ({ changedCategories }) => {
+        {% if GOOGLE_ANALYTICS_ID %}
+        if (changedCategories.includes('analytics') && typeof window.syncPolisportivaGaConsent === 'function') {
+          window.syncPolisportivaGaConsent();
+        }
+        {% endif %}
       },
 
       language: {
