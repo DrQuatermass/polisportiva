@@ -89,6 +89,8 @@ class IndexingAndAnalyticsTests(TestCase):
         self.assertContains(response, 'name="google-site-verification" content="google-verification-token"')
         self.assertContains(response, 'https://www.googletagmanager.com/gtag/js?id=G-52F6EHTCWC')
         self.assertContains(response, "gtag('config', 'G-52F6EHTCWC'")
+        self.assertContains(response, 'window.CookieConsent = CookieConsent')
+        self.assertContains(response, 'cookieConsent.acceptedService')
 
     @override_settings(SITE_URL='https://polisportivasanmarinese.it\\')
     def test_robots_txt_has_sitemap_without_trailing_backslash(self):

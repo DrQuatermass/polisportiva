@@ -141,13 +141,14 @@
       window.polisportivaGaConfigured = false;
     };
     window.syncPolisportivaGaConsent = function () {
-      if (!window.CookieConsent) {
+      const cookieConsent = window.CookieConsent;
+      if (!cookieConsent) {
         return;
       }
-      const serviceAccepted = typeof CookieConsent.acceptedService === 'function'
-        && CookieConsent.acceptedService('ga4', 'analytics');
-      const categoryAccepted = typeof CookieConsent.acceptedCategory === 'function'
-        && CookieConsent.acceptedCategory('analytics');
+      const serviceAccepted = typeof cookieConsent.acceptedService === 'function'
+        && cookieConsent.acceptedService('ga4', 'analytics');
+      const categoryAccepted = typeof cookieConsent.acceptedCategory === 'function'
+        && cookieConsent.acceptedCategory('analytics');
       if (serviceAccepted || categoryAccepted) {
         window.enablePolisportivaGa();
       } else {
@@ -256,6 +257,7 @@
   {% endcomment %}
   <script type="module">
     import * as CookieConsent from 'https://cdn.jsdelivr.net/gh/orestbida/cookieconsent@v3.0.1/dist/cookieconsent.esm.js';
+    window.CookieConsent = CookieConsent;
 
     CookieConsent.run({
       guiOptions: {
