@@ -114,6 +114,20 @@ class EventSeoTests(TestCase):
         self.assertIn('dettagli utili.', description)
         self.assertNotIn('https://example.test', description)
 
+    def test_manual_meta_description_removes_raw_urls(self):
+        event = Event(
+            title='Pastasciuttata',
+            slug='pastasciuttata',
+            description='Serata solidale con cena e raccolta fondi.',
+            meta_description='https://example.test/articolo',
+            date=timezone.now() + timedelta(days=7),
+            location='Carpi',
+        )
+
+        description = event.get_meta_description()
+
+        self.assertEqual(description, 'Serata solidale con cena e raccolta fondi.')
+
     def test_social_image_endpoint_returns_jpeg_for_facebook(self):
         event = Event.objects.create(
             title='Granfondo',

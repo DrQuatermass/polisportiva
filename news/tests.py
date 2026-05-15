@@ -69,6 +69,19 @@ class NewsSeoTests(TestCase):
         self.assertIn('altri dettagli.', description)
         self.assertNotIn('https://example.test', description)
 
+    def test_manual_meta_description_removes_raw_urls(self):
+        news = News(
+            title='Dove si corre',
+            slug='dove-si-corre-url',
+            content='Un aggiornamento importante per la comunita.',
+            meta_description='https://example.test/articolo',
+            published=True,
+        )
+
+        description = news.get_meta_description()
+
+        self.assertEqual(description, 'Un aggiornamento importante per la comunita.')
+
     def test_unpublished_news_is_hidden_from_detail_and_social_image(self):
         news = News.objects.create(
             title='Bozza',
