@@ -128,6 +128,7 @@ MIDDLEWARE = [
     # WhiteNoise subito dopo SecurityMiddleware per servire static
     # con gzip/brotli e header di cache lunghi (Apache/Gunicorn).
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'home.middleware.SocialCrawlerPlainHtmlMiddleware',
     # GZip come fallback se whitenoise non copre una risposta.
     'django.middleware.gzip.GZipMiddleware',
     'django.middleware.cache.UpdateCacheMiddleware',

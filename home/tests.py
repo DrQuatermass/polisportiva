@@ -1,6 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -75,6 +76,9 @@ class SiteContextProcessorTests(TestCase):
 
 
 class IndexingAndAnalyticsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     @override_settings(
         SITE_URL='https://polisportivasanmarinese.it\\',
         GOOGLE_ANALYTICS_ID='G-RH30SL6GSX',
@@ -105,6 +109,18 @@ class IndexingAndAnalyticsTests(TestCase):
         self.assertIn('Disallow: /eventi/paypal/', content)
         self.assertIn('Sitemap: https://polisportivasanmarinese.it/sitemap.xml', content)
         self.assertNotIn('\\/sitemap.xml', content)
+
+    def test_facebook_crawler_gets_plain_uncached_html(self):
+        response = self.client.get(
+            reverse('home'),
+            HTTP_USER_AGENT='facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            HTTP_ACCEPT_ENCODING='gzip, deflate, br',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('Content-Encoding', response)
+        self.assertEqual(response['Cache-Control'], 'no-store, no-cache, must-revalidate, max-age=0')
+        self.assertEqual(response['Vary'], 'User-Agent')
 
 
 class CalendarioViewTests(TestCase):
