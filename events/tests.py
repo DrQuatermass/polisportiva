@@ -91,7 +91,7 @@ class EventSeoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'property="og:type" content="article"')
         self.assertContains(response, f'property="og:url" content="https://polisportivasanmarinese.it{event.get_absolute_url()}"')
-        social_image_url = f'https://polisportivasanmarinese.it{reverse("event_social_image", kwargs={"slug": event.slug})}?v={int(event.date.timestamp())}'
+        social_image_url = f'https://polisportivasanmarinese.it{reverse("event_social_image", kwargs={"slug": event.slug})}'
         self.assertContains(response, f'property="og:image" content="{social_image_url}"')
         self.assertContains(response, f'property="og:image:url" content="{social_image_url}"')
         self.assertContains(response, f'rel="image_src" href="{social_image_url}"')
