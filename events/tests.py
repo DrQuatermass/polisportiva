@@ -94,8 +94,25 @@ class EventSeoTests(TestCase):
         social_image_url = f'https://polisportivasanmarinese.it{reverse("event_social_image", kwargs={"slug": event.slug})}?v={int(event.date.timestamp())}'
         self.assertContains(response, f'property="og:image" content="{social_image_url}"')
         self.assertContains(response, f'property="og:image:url" content="{social_image_url}"')
+        self.assertContains(response, f'rel="image_src" href="{social_image_url}"')
+        self.assertContains(response, f'name="twitter:image:alt" content="{event.title}"')
         self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
         self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
+
+    def test_meta_description_fallback_removes_raw_urls(self):
+        event = Event(
+            title='Pastasciuttata',
+            slug='pastasciuttata',
+            description='Serata solidale. https://example.test/articolo dettagli utili.',
+            date=timezone.now() + timedelta(days=7),
+            location='Carpi',
+        )
+
+        description = event.get_meta_description()
+
+        self.assertIn('Serata solidale.', description)
+        self.assertIn('dettagli utili.', description)
+        self.assertNotIn('https://example.test', description)
 
     def test_social_image_endpoint_returns_jpeg_for_facebook(self):
         event = Event.objects.create(

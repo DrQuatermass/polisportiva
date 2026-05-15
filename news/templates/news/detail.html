@@ -13,9 +13,11 @@
 {% block og_image_secure_url %}{{ SITE_URL }}{% url 'news_social_image' news.slug %}?v={{ news.created_at|date:'U' }}{% endblock %}
 {% block og_image_type %}image/jpeg{% endblock %}
 {% block og_image_alt %}{{ news.title }}{% endblock %}
+{% block image_src %}{{ SITE_URL }}{% url 'news_social_image' news.slug %}?v={{ news.created_at|date:'U' }}{% endblock %}
 {% block twitter_title %}{{ news.title }}{% endblock %}
 {% block twitter_description %}{{ news.get_meta_description }}{% endblock %}
 {% block twitter_image %}{{ SITE_URL }}{% url 'news_social_image' news.slug %}?v={{ news.created_at|date:'U' }}{% endblock %}
+{% block twitter_image_alt %}{{ news.title }}{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">

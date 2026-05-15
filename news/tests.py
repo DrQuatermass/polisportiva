@@ -50,8 +50,24 @@ class NewsSeoTests(TestCase):
         social_image_url = f'https://polisportivasanmarinese.it{reverse("news_social_image", kwargs={"slug": news.slug})}?v={int(news.created_at.timestamp())}'
         self.assertContains(response, f'property="og:image" content="{social_image_url}"')
         self.assertContains(response, f'property="og:image:url" content="{social_image_url}"')
+        self.assertContains(response, f'rel="image_src" href="{social_image_url}"')
+        self.assertContains(response, f'name="twitter:image:alt" content="{news.title}"')
         self.assertContains(response, 'property="og:image:type" content="image/jpeg"')
         self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
+
+    def test_meta_description_fallback_removes_raw_urls(self):
+        news = News(
+            title='Dove si corre',
+            slug='dove-si-corre-url',
+            content='Un aggiornamento importante. https://example.test/articolo altri dettagli.',
+            published=True,
+        )
+
+        description = news.get_meta_description()
+
+        self.assertIn('Un aggiornamento importante.', description)
+        self.assertIn('altri dettagli.', description)
+        self.assertNotIn('https://example.test', description)
 
     def test_unpublished_news_is_hidden_from_detail_and_social_image(self):
         news = News.objects.create(

@@ -52,6 +52,7 @@ class News(models.Model):
         if self.meta_description:
             return self.meta_description
         text = strip_tags(self.content or '')
+        text = re.sub(r'https?://\S+', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text[:157] + '…' if len(text) > 160 else text
 
