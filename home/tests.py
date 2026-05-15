@@ -77,7 +77,7 @@ class SiteContextProcessorTests(TestCase):
 class IndexingAndAnalyticsTests(TestCase):
     @override_settings(
         SITE_URL='https://polisportivasanmarinese.it\\',
-        GOOGLE_ANALYTICS_ID='G-KJW4G9LKHF',
+        GOOGLE_ANALYTICS_ID='G-RH30SL6GSX',
         GOOGLE_SITE_VERIFICATION='google-verification-token',
     )
     def test_home_renders_google_indexing_and_analytics_tags(self):
@@ -87,8 +87,8 @@ class IndexingAndAnalyticsTests(TestCase):
         self.assertContains(response, '<link rel="canonical" href="https://polisportivasanmarinese.it/">')
         self.assertContains(response, 'name="robots" content="index,follow,max-image-preview:large"')
         self.assertContains(response, 'name="google-site-verification" content="google-verification-token"')
-        self.assertContains(response, 'https://www.googletagmanager.com/gtag/js?id=G-KJW4G9LKHF')
-        self.assertContains(response, "gtag('config', 'G-KJW4G9LKHF'")
+        self.assertContains(response, 'https://www.googletagmanager.com/gtag/js?id=G-RH30SL6GSX')
+        self.assertContains(response, "gtag('config', 'G-RH30SL6GSX'")
         self.assertContains(response, 'window.CookieConsent = CookieConsent')
         self.assertContains(response, 'cookieConsent.acceptedService')
 
