@@ -287,3 +287,5 @@ CKEDITOR_CONFIGS = {
 PAYPAL_MODE = env('PAYPAL_MODE', 'sandbox')       # 'sandbox' oppure 'live' in produzione
 PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID')
 PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET')
+# ID del webhook creato su developer.paypal.com (serve a verificare le notifiche)
+PAYPAL_WEBHOOK_ID = env('PAYPAL_WEBHOOK_ID', '')

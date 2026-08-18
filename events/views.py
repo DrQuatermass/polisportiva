@@ -1,12 +1,16 @@
+import json
 import logging
 import uuid
 
 import requests
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
@@ -365,3 +369,86 @@ def paypal_return(request, registration_id):
     except Exception as e:
         logger.error('PayPal return/capture error: %s', e)
         return _payment_error_page(request, registration, str(e))
+
+
+# Eventi PayPal → nuovo stato dell'iscrizione.
+_WEBHOOK_STATUS_MAP = {
+    'PAYMENT.CAPTURE.COMPLETED': 'completed',
+    'PAYMENT.CAPTURE.DENIED':    'failed',
+    'PAYMENT.CAPTURE.REVERSED':  'cancelled',
+    'PAYMENT.CAPTURE.REFUNDED':  'cancelled',
+}
+
+
+def _paypal_webhook_verified(request, event):
+    """Verifica la firma della notifica con PayPal, per scartare eventi
+    contraffatti."""
+    webhook_id = getattr(settings, 'PAYPAL_WEBHOOK_ID', '')
+    if not webhook_id:
+        logger.error('PayPal webhook ricevuto ma PAYPAL_WEBHOOK_ID non è configurato')
+        return False
+    try:
+        token, base = _get_paypal_token()
+        resp = requests.post(
+            f'{base}/v1/notifications/verify-webhook-signature',
+            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            json={
+                'auth_algo': request.headers.get('Paypal-Auth-Algo'),
+                'cert_url': request.headers.get('Paypal-Cert-Url'),
+                'transmission_id': request.headers.get('Paypal-Transmission-Id'),
+                'transmission_sig': request.headers.get('Paypal-Transmission-Sig'),
+                'transmission_time': request.headers.get('Paypal-Transmission-Time'),
+                'webhook_id': webhook_id,
+                'webhook_event': event,
+            },
+            timeout=10,
+        )
+        return resp.ok and resp.json().get('verification_status') == 'SUCCESS'
+    except Exception as e:
+        logger.error('PayPal webhook: verifica firma fallita: %s', e)
+        return False
+
+
+@csrf_exempt
+@require_POST
+def paypal_webhook(request):
+    """Riceve le notifiche PayPal e aggiorna lo stato dell'iscrizione quando
+    PayPal chiude la revisione (es. 'review' → 'completed'/'failed')."""
+    try:
+        event = json.loads(request.body)
+    except ValueError:
+        logger.error('PayPal webhook: body non JSON')
+        return HttpResponse(status=400)
+
+    if not _paypal_webhook_verified(request, event):
+        logger.warning('PayPal webhook: firma non valida, evento ignorato')
+        return HttpResponse(status=400)
+
+    event_type = event.get('event_type', '')
+    resource = event.get('resource') or {}
+    custom_id = resource.get('custom_id')
+
+    new_status = _WEBHOOK_STATUS_MAP.get(event_type)
+    if not new_status or not custom_id:
+        # Evento non pertinente o senza riferimento all'iscrizione: ignora.
+        return HttpResponse(status=200)
+
+    try:
+        registration = Registration.objects.get(id=custom_id)
+    except (Registration.DoesNotExist, ValidationError, ValueError):
+        logger.warning('PayPal webhook: iscrizione %s non trovata', custom_id)
+        return HttpResponse(status=200)
+
+    if registration.payment_status != new_status:
+        old_status = registration.payment_status
+        registration.payment_status = new_status
+        registration.save(update_fields=['payment_status'])
+        logger.info(
+            'PayPal webhook: iscrizione %s %s → %s (%s)',
+            registration.id, old_status, new_status, event_type,
+        )
+        # Verifica chiusa positivamente: conferma l'iscritto via email.
+        if new_status == 'completed':
+            _send_confirmation_email(registration)
+
+    return HttpResponse(status=200)
