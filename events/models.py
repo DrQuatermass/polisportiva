@@ -81,14 +81,14 @@ class Event(models.Model):
         if self.registration_deadline and timezone.now() > self.registration_deadline:
             return False
         if self.max_registrations is not None:
-            confirmed = self.registrations.filter(payment_status__in=['free', 'completed']).count()
+            confirmed = self.registrations.filter(payment_status__in=['free', 'completed', 'review']).count()
             if confirmed >= self.max_registrations:
                 return False
         return True
 
     @property
     def registrations_count(self):
-        return self.registrations.filter(payment_status__in=['free', 'completed']).count()
+        return self.registrations.filter(payment_status__in=['free', 'completed', 'review']).count()
 
     @property
     def is_paid(self):
@@ -153,6 +153,7 @@ class Registration(models.Model):
     PAYMENT_STATUS = [
         ('free',      'Gratuito'),
         ('pending',   'In attesa di pagamento'),
+        ('review',    'In verifica PayPal'),
         ('completed', 'Pagamento completato'),
         ('failed',    'Pagamento fallito'),
         ('cancelled', 'Annullato'),
@@ -177,6 +178,10 @@ class Registration(models.Model):
     @property
     def is_confirmed(self):
         return self.payment_status in ('free', 'completed')
+
+    @property
+    def is_under_review(self):
+        return self.payment_status == 'review'
 
 
 class RegistrationAnswer(models.Model):

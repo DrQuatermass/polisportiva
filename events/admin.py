@@ -131,6 +131,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             'free':      '#198754',
             'completed': '#198754',
             'pending':   '#fd7e14',
+            'review':    '#0d6efd',
             'failed':    '#dc3545',
             'cancelled': '#6c757d',
         }

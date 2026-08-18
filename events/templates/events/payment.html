@@ -79,6 +79,9 @@ paypal.Buttons({
     });
   },
   onApprove: function(data) {
+    // Non lanciamo mai eccezioni qui dentro: se onApprove va in errore,
+    // PayPal non chiude la sua finestra e resta una pagina bianca orfana.
+    // Gestiamo ogni esito restituendo una promise risolta.
     return fetch("/eventi/paypal/capture/" + registrationId + "/", {
       method: "POST",
       headers: {
@@ -87,16 +90,20 @@ paypal.Buttons({
       },
       body: JSON.stringify({ orderID: data.orderID })
     })
-    .then(res => res.json().then(data => {
-      if (!res.ok) throw new Error(data.error || "Errore conferma pagamento PayPal");
-      return data;
-    }))
+    .then(res => res.json().catch(() => ({})))
     .then(result => {
-      if (result.status === "completed") {
+      // "completed" = pagamento riuscito, "review" = accettato ma in verifica:
+      // in entrambi i casi l'iscrizione è registrata → andiamo alla conferma.
+      if ((result.status === "completed" || result.status === "review") && result.redirect) {
         window.location.href = result.redirect;
-      } else {
-        document.getElementById("paypal-error").classList.remove("d-none");
+        return;
       }
+      const errorBox = document.getElementById("paypal-error");
+      if (result.error) errorBox.textContent = result.error;
+      errorBox.classList.remove("d-none");
+    })
+    .catch(function() {
+      document.getElementById("paypal-error").classList.remove("d-none");
     });
   },
   onError: function(err) {

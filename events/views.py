@@ -39,10 +39,32 @@ def _paypal_error_payload(resp):
     return {'error': message, 'paypal': data}
 
 
+def _extract_capture_status(result):
+    """Ritorna lo stato reale della cattura PayPal (COMPLETED/PENDING/DECLINED)
+    letto da purchase_units[].payments.captures[]. Se non disponibile,
+    ripiega sullo stato dell'ordine."""
+    try:
+        captures = result['purchase_units'][0]['payments']['captures']
+        status = captures[0].get('status')
+        if status:
+            return status
+    except (KeyError, IndexError, TypeError):
+        pass
+    return result.get('status')
+
+
 def _send_confirmation_email(registration):
     event = registration.event
-    is_paid = registration.payment_status == 'completed'
-    payment_note = 'Pagamento ricevuto.' if is_paid else ''
+    status = registration.payment_status
+    if status == 'completed':
+        payment_note = 'Pagamento ricevuto.'
+    elif status == 'review':
+        payment_note = (
+            'Abbiamo ricevuto il pagamento: è in fase di verifica da parte di PayPal. '
+            'Ti confermeremo appena la verifica sarà completata.'
+        )
+    else:
+        payment_note = ''
 
     subject = f'Conferma iscrizione: {event.title}'
     body = (
@@ -243,19 +265,35 @@ def paypal_capture_order(request, registration_id):
             logger.error('PayPal capture error %s: %s', resp.status_code, payload)
             return JsonResponse(payload, status=502)
         result = resp.json()
-        if result.get('status') == 'COMPLETED':
+        capture_status = _extract_capture_status(result)
+        confirm_url = f'/eventi/conferma/{registration.id}/'
+
+        if capture_status == 'COMPLETED':
             registration.payment_status = 'completed'
             registration.paypal_order_id = order_id
             registration.save()
             # Pagamento completato: manda la conferma
             _send_confirmation_email(registration)
-            return JsonResponse({
-                'status': 'completed',
-                'redirect': f'/eventi/conferma/{registration.id}/',
-            })
+            return JsonResponse({'status': 'completed', 'redirect': confirm_url})
+
+        if capture_status == 'PENDING':
+            # PayPal ha accettato il pagamento ma lo tiene in revisione di
+            # sicurezza: non è né completato né fallito. Teniamo il posto e
+            # avvisiamo l'utente, in attesa che PayPal chiuda la verifica.
+            registration.payment_status = 'review'
+            registration.paypal_order_id = order_id
+            registration.save()
+            _send_confirmation_email(registration)
+            return JsonResponse({'status': 'review', 'redirect': confirm_url})
+
+        # DECLINED o qualsiasi altro esito: pagamento non riuscito.
+        logger.warning(
+            'PayPal capture non riuscita per iscrizione %s: stato cattura=%s',
+            registration.id, capture_status,
+        )
         registration.payment_status = 'failed'
         registration.save()
-        return JsonResponse({'status': 'failed'}, status=400)
+        return JsonResponse({'status': 'failed'}, status=200)
     except Exception as e:
         logger.error('PayPal capture error: %s', e)
         return JsonResponse({'error': str(e)}, status=500)
