@@ -1,12 +1,11 @@
-import json
 import logging
 import uuid
 
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
@@ -51,6 +50,21 @@ def _extract_capture_status(result):
     except (KeyError, IndexError, TypeError):
         pass
     return result.get('status')
+
+
+def _extract_custom_id(result):
+    """Ritorna il custom_id (= id iscrizione) dalla risposta PayPal, per
+    verificare che l'ordine catturato appartenga davvero a questa iscrizione."""
+    try:
+        pu = result['purchase_units'][0]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if pu.get('custom_id'):
+        return pu['custom_id']
+    try:
+        return pu['payments']['captures'][0].get('custom_id')
+    except (KeyError, IndexError, TypeError):
+        return None
 
 
 def _send_confirmation_email(registration):
@@ -185,6 +199,7 @@ def event_payment(request, registration_id):
     return render(request, 'events/payment.html', {
         'registration': registration,
         'paypal_client_id': getattr(settings, 'PAYPAL_CLIENT_ID', ''),
+        'cancelled': request.GET.get('annullato') == '1',
     })
 
 
@@ -211,13 +226,29 @@ def _get_paypal_token():
     return resp.json()['access_token'], base
 
 
+def _payment_error_page(request, registration, message):
+    return render(request, 'events/payment.html', {
+        'registration': registration,
+        'paypal_client_id': getattr(settings, 'PAYPAL_CLIENT_ID', ''),
+        'payment_error': message,
+    })
+
+
 @require_POST
-def paypal_create_order(request, registration_id):
+def paypal_start(request, registration_id):
+    """Crea l'ordine PayPal e reindirizza l'utente alla pagina di pagamento di
+    PayPal (flusso a redirect: nessun popup, nessun JS SDK)."""
     registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
     try:
         token, base = _get_paypal_token()
         amount_value = f'{registration.amount_paid:.2f}'
         description = f'Iscrizione: {registration.event.title}'[:127]
+        return_url = request.build_absolute_uri(
+            reverse('paypal_return', args=[registration.id])
+        )
+        cancel_url = request.build_absolute_uri(
+            reverse('event_payment', args=[registration.id]) + '?annullato=1'
+        )
         resp = requests.post(
             f'{base}/v2/checkout/orders',
             headers={
@@ -233,8 +264,11 @@ def paypal_create_order(request, registration_id):
                     'custom_id': str(registration.id),
                 }],
                 'application_context': {
+                    'brand_name': 'Polisportiva Sanmarinese',
                     'shipping_preference': 'NO_SHIPPING',
                     'user_action': 'PAY_NOW',
+                    'return_url': return_url,
+                    'cancel_url': cancel_url,
                 },
             },
             timeout=10,
@@ -242,18 +276,44 @@ def paypal_create_order(request, registration_id):
         if not resp.ok:
             payload = _paypal_error_payload(resp)
             logger.error('PayPal create order error %s: %s', resp.status_code, payload)
-            return JsonResponse(payload, status=502)
-        return JsonResponse({'id': resp.json()['id']})
+            return _payment_error_page(request, registration, payload['error'])
+
+        data = resp.json()
+        approve_url = next(
+            (link['href'] for link in data.get('links', [])
+             if link.get('rel') in ('approve', 'payer-action')),
+            None,
+        )
+        if not approve_url:
+            logger.error('PayPal: link di approvazione mancante nella risposta: %s', data)
+            return _payment_error_page(
+                request, registration,
+                'Impossibile avviare il pagamento PayPal. Riprova o contattaci.',
+            )
+
+        registration.paypal_order_id = data.get('id', '')
+        registration.save()
+        return redirect(approve_url)
     except Exception as e:
-        logger.error('PayPal create order error: %s', e)
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.error('PayPal start error: %s', e)
+        return _payment_error_page(request, registration, str(e))
 
 
-@require_POST
-def paypal_capture_order(request, registration_id):
-    registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
+def paypal_return(request, registration_id):
+    """PayPal reindirizza qui dopo l'approvazione: catturiamo il pagamento e
+    portiamo l'utente alla pagina di conferma."""
+    registration = get_object_or_404(Registration, id=registration_id)
+
+    # Già elaborata (es. refresh del ritorno): non ricatturare, vai alla conferma.
+    if registration.payment_status != 'pending':
+        return redirect('event_registration_confirm', registration_id=registration.id)
+
+    order_id = request.GET.get('token')
+    if not order_id:
+        # Ritorno senza token = pagamento non avviato/annullato.
+        return redirect(reverse('event_payment', args=[registration.id]) + '?annullato=1')
+
     try:
-        order_id = json.loads(request.body).get('orderID')
         token, base = _get_paypal_token()
         resp = requests.post(
             f'{base}/v2/checkout/orders/{order_id}/capture',
@@ -263,37 +323,45 @@ def paypal_capture_order(request, registration_id):
         if not resp.ok:
             payload = _paypal_error_payload(resp)
             logger.error('PayPal capture error %s: %s', resp.status_code, payload)
-            return JsonResponse(payload, status=502)
+            return _payment_error_page(request, registration, payload['error'])
+
         result = resp.json()
+
+        # Sicurezza: l'ordine catturato deve appartenere a questa iscrizione.
+        custom_id = _extract_custom_id(result)
+        if custom_id and custom_id != str(registration.id):
+            logger.error(
+                'PayPal: custom_id %s non corrisponde all\'iscrizione %s',
+                custom_id, registration.id,
+            )
+            return _payment_error_page(
+                request, registration, 'Pagamento non valido per questa iscrizione.'
+            )
+
         capture_status = _extract_capture_status(result)
-        confirm_url = f'/eventi/conferma/{registration.id}/'
 
         if capture_status == 'COMPLETED':
             registration.payment_status = 'completed'
-            registration.paypal_order_id = order_id
-            registration.save()
-            # Pagamento completato: manda la conferma
-            _send_confirmation_email(registration)
-            return JsonResponse({'status': 'completed', 'redirect': confirm_url})
-
-        if capture_status == 'PENDING':
-            # PayPal ha accettato il pagamento ma lo tiene in revisione di
-            # sicurezza: non è né completato né fallito. Teniamo il posto e
-            # avvisiamo l'utente, in attesa che PayPal chiuda la verifica.
+        elif capture_status == 'PENDING':
+            # Accettato ma in revisione di sicurezza da PayPal: teniamo il posto
+            # e avvisiamo l'utente in attesa che la verifica si chiuda.
             registration.payment_status = 'review'
-            registration.paypal_order_id = order_id
+        else:
+            logger.warning(
+                'PayPal capture non riuscita per iscrizione %s: stato cattura=%s',
+                registration.id, capture_status,
+            )
+            registration.payment_status = 'failed'
             registration.save()
-            _send_confirmation_email(registration)
-            return JsonResponse({'status': 'review', 'redirect': confirm_url})
+            return _payment_error_page(
+                request, registration,
+                'Il pagamento non è andato a buon fine. Riprova o contattaci.',
+            )
 
-        # DECLINED o qualsiasi altro esito: pagamento non riuscito.
-        logger.warning(
-            'PayPal capture non riuscita per iscrizione %s: stato cattura=%s',
-            registration.id, capture_status,
-        )
-        registration.payment_status = 'failed'
+        registration.paypal_order_id = order_id
         registration.save()
-        return JsonResponse({'status': 'failed'}, status=200)
+        _send_confirmation_email(registration)
+        return redirect('event_registration_confirm', registration_id=registration.id)
     except Exception as e:
-        logger.error('PayPal capture error: %s', e)
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.error('PayPal return/capture error: %s', e)
+        return _payment_error_page(request, registration, str(e))
