@@ -104,6 +104,8 @@ def build_registration_form(event, data=None, files=None):
 
         def clean_reg_options(self):
             selected = self.cleaned_data['reg_options']
+            if event.lessons and all(o.is_extra for o in selected):
+                raise forms.ValidationError('Seleziona almeno una lezione.')
             unavailable = [o for o in selected if not o.is_available]
             if unavailable:
                 names = ', '.join(o.title for o in unavailable)

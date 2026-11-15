@@ -39,7 +39,7 @@
             <span class="text-muted d-block mb-1">Lezioni</span>
             <ul class="list-unstyled mb-0">
               {% for option in options %}
-              <li>{{ option.date|date:"l d/m/Y H:i" }} — <strong>{{ option.title }}</strong></li>
+              <li>{% if option.date and not option.is_extra %}{{ option.date|date:"l d/m/Y H:i" }} — {% endif %}<strong>{{ option.title }}</strong></li>
               {% endfor %}
             </ul>
           </div>

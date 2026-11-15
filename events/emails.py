@@ -38,8 +38,11 @@ def _summary(registration, with_amount=True):
     if options:
         lines += '\nLezioni scelte:\n'
         for option in options:
-            local_date = timezone.localtime(option.date)
-            lines += f'  - {local_date.strftime("%d/%m/%Y %H:%M")} {option.title}\n'
+            if option.date and not option.is_extra:
+                local_date = timezone.localtime(option.date)
+                lines += f'  - {local_date.strftime("%d/%m/%Y %H:%M")} {option.title}\n'
+            else:
+                lines += f'  - {option.title}\n'
         lines += '\n'
     elif event.date:
         lines += f'Data evento: {timezone.localtime(event.date).strftime("%d/%m/%Y %H:%M")}\n'

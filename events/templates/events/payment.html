@@ -32,12 +32,12 @@
           <ul class="list-unstyled mb-0">
             {% for option in options %}
             <li class="d-flex justify-content-between mb-1">
-              <span>{{ option.date|date:"d/m" }} — {{ option.title }}</span>
+              <span>{% if option.date and not option.is_extra %}{{ option.date|date:"d/m" }} — {% endif %}{{ option.title }}</span>
               <span>€ {{ option.price|floatformat:"-2" }}</span>
             </li>
             {% endfor %}
           </ul>
-          {% if registration.event.bundle_price is not None and options|length == registration.event.options.count and registration.amount_paid < registration.event.options_total_price %}
+          {% if registration.bundle_applied %}
           <p class="small text-success mb-0 mt-1"><i class="bi bi-tag me-1"></i>Prezzo pacchetto completo applicato</p>
           {% endif %}
           {% endif %}

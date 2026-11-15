@@ -38,7 +38,7 @@ class RegistrationFieldInline(admin.TabularInline):
 class EventOptionInline(admin.TabularInline):
     model = EventOption
     extra = 0
-    fields = ['order', 'date', 'title', 'price', 'max_participants', 'registration_deadline', 'iscritti']
+    fields = ['order', 'date', 'title', 'is_extra', 'price', 'max_participants', 'registration_deadline', 'iscritti']
     readonly_fields = ['iscritti']
     ordering = ['order', 'date']
     verbose_name_plural = (
@@ -324,7 +324,10 @@ class RegistrationAdmin(admin.ModelAdmin):
         options = list(obj.options.all())
         if not options:
             return '-'
-        return ', '.join(f'{timezone.localtime(o.date):%d/%m} {o.title}' for o in options)
+        return ', '.join(
+            f'{timezone.localtime(o.date):%d/%m} {o.title}' if o.date and not o.is_extra else o.title
+            for o in options
+        )
     lezioni.short_description = 'Lezioni'
 
     @admin.action(description='Esporta le iscrizioni selezionate in CSV (Excel)')

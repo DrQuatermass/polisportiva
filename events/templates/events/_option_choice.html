@@ -1,0 +1,21 @@
+{% load l10n %}<label class="event-option{% if not option.is_available %} is-disabled{% endif %}">
+  <input type="checkbox" class="event-option-input" name="reg_options"
+         value="{{ option.pk }}" data-price="{{ option.price|unlocalize }}"
+         {% if option.is_extra %}data-extra{% endif %}
+         {% if reg_form.is_bound and option.pk|stringformat:"s" in selected %}checked{% endif %}
+         {% if not option.is_available %}disabled{% endif %}>
+  <span class="event-option-body">
+    {% if option.date and not option.is_extra %}
+    <span class="event-option-date">{{ option.date|date:"l d F, H:i" }}</span>
+    {% endif %}
+    <span class="event-option-title">{{ option.title }}</span>
+    {% if option.is_full %}
+    <span class="event-option-status">Posti esauriti</span>
+    {% elif option.is_closed %}
+    <span class="event-option-status">Iscrizioni chiuse</span>
+    {% elif option.places_left is not None and option.places_left <= 3 %}
+    <span class="event-option-status">Ultim{{ option.places_left|pluralize:"o,i" }} {{ option.places_left }} post{{ option.places_left|pluralize:"o,i" }}</span>
+    {% endif %}
+  </span>
+  <span class="event-option-price">€ {{ option.price|floatformat:"-2" }}</span>
+</label>

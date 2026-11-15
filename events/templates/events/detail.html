@@ -203,34 +203,17 @@
             </div>
 
             {% if event.has_options %}
-            {% with options=event.options.all selected=reg_form.reg_options.value %}
+            {% with lessons=event.lessons extras=event.extras selected=reg_form.reg_options.value %}
             <fieldset class="event-options" data-event-options
                       {% if event.bundle_price is not None %}data-bundle-price="{{ event.bundle_price|unlocalize }}"{% endif %}
-                      data-options-count="{{ options|length }}">
+                      data-options-count="{{ lessons|length }}">
               <legend class="form-label fw-semibold fs-6">
                 Lezioni a cui iscriversi <span class="text-danger">*</span>
               </legend>
               <p class="form-text mt-0 mb-2">Seleziona una o più lezioni.</p>
 
-              {% for option in options %}
-              <label class="event-option{% if not option.is_available %} is-disabled{% endif %}">
-                <input type="checkbox" class="event-option-input" name="reg_options"
-                       value="{{ option.pk }}" data-price="{{ option.price|unlocalize }}"
-                       {% if reg_form.is_bound and option.pk|stringformat:"s" in selected %}checked{% endif %}
-                       {% if not option.is_available %}disabled{% endif %}>
-                <span class="event-option-body">
-                  <span class="event-option-date">{{ option.date|date:"l d F, H:i" }}</span>
-                  <span class="event-option-title">{{ option.title }}</span>
-                  {% if option.is_full %}
-                  <span class="event-option-status">Posti esauriti</span>
-                  {% elif option.is_closed %}
-                  <span class="event-option-status">Iscrizioni chiuse</span>
-                  {% elif option.places_left is not None and option.places_left <= 3 %}
-                  <span class="event-option-status">Ultim{{ option.places_left|pluralize:"o,i" }} {{ option.places_left }} post{{ option.places_left|pluralize:"o,i" }}</span>
-                  {% endif %}
-                </span>
-                <span class="event-option-price">€ {{ option.price|floatformat:"-2" }}</span>
-              </label>
+              {% for option in lessons %}
+              {% include "events/_option_choice.html" %}
               {% endfor %}
 
               {% if reg_form.reg_options.errors %}<div class="invalid-feedback d-block mb-2">{{ reg_form.reg_options.errors.0 }}</div>{% endif %}
@@ -241,11 +224,18 @@
                   <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Seleziona tutte
                 </button>
                 <span class="event-options-bundle-note text-muted">
-                  Tutte e {{ options|length }} le lezioni:
+                  Tutte e {{ lessons|length }} le lezioni:
                   {% if event.bundle_price < event.options_total_price %}<s>€ {{ event.options_total_price|floatformat:"-2" }}</s>{% endif %}
                   <strong class="text-dark">€ {{ event.bundle_price|floatformat:"-2" }}</strong>
                 </span>
               </div>
+              {% endif %}
+
+              {% if extras %}
+              <p class="form-label fw-semibold mt-3 mb-2">Da aggiungere</p>
+              {% for option in extras %}
+              {% include "events/_option_choice.html" %}
+              {% endfor %}
               {% endif %}
 
               <div class="event-options-summary" aria-live="polite">
@@ -350,26 +340,39 @@ document.addEventListener('DOMContentLoaded', function () {
     return n.toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
   };
 
+  // Le voci extra (es. tessera) si sommano ma non contano per il pacchetto.
+  const lessonInputs = inputs.filter(function (i) { return !('extra' in i.dataset); });
+  const sumOf = function (list) {
+    return list.reduce(function (sum, i) { return sum + parseFloat(i.dataset.price); }, 0);
+  };
+
   function update() {
-    const checked = inputs.filter(function (i) { return i.checked; });
-    let total = checked.reduce(function (sum, i) { return sum + parseFloat(i.dataset.price); }, 0);
-    const allChosen = checked.length === optionsCount;
+    const checkedLessons = lessonInputs.filter(function (i) { return i.checked; });
+    const checkedExtras = inputs.filter(function (i) { return i.checked && 'extra' in i.dataset; });
+    let lessonsTotal = sumOf(checkedLessons);
+    const allChosen = checkedLessons.length === optionsCount;
     if (allChosen && bundle !== null) {
-      total = Math.min(total, bundle);
+      lessonsTotal = Math.min(lessonsTotal, bundle);
     }
+    const total = lessonsTotal + sumOf(checkedExtras);
     totalEl.textContent = fmt(total);
-    if (checked.length === 0) {
-      countEl.textContent = 'Nessuna lezione selezionata';
+    let label;
+    if (checkedLessons.length === 0) {
+      label = 'Nessuna lezione selezionata';
     } else if (allChosen && bundle !== null) {
-      countEl.textContent = 'Tutte le lezioni (pacchetto completo)';
+      label = 'Tutte le lezioni (pacchetto completo)';
     } else {
-      countEl.textContent = checked.length === 1 ? '1 lezione selezionata' : checked.length + ' lezioni selezionate';
+      label = checkedLessons.length === 1 ? '1 lezione' : checkedLessons.length + ' lezioni';
     }
+    checkedExtras.forEach(function (i) {
+      label += ' + ' + i.closest('label').querySelector('.event-option-title').textContent.trim();
+    });
+    countEl.textContent = label;
     if (submitTotalEl) {
-      submitTotalEl.textContent = checked.length ? ' — € ' + fmt(total) : '';
+      submitTotalEl.textContent = checkedLessons.length ? ' — € ' + fmt(total) : '';
     }
     if (selectAllBtn) {
-      const allEnabledChecked = inputs.every(function (i) { return i.disabled || i.checked; });
+      const allEnabledChecked = lessonInputs.every(function (i) { return i.disabled || i.checked; });
       selectAllBtn.innerHTML = allEnabledChecked
         ? '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>Deseleziona tutte'
         : '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>Seleziona tutte';
@@ -379,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
   inputs.forEach(function (i) { i.addEventListener('change', update); });
   if (selectAllBtn) {
     selectAllBtn.addEventListener('click', function () {
-      const enabled = inputs.filter(function (i) { return !i.disabled; });
+      const enabled = lessonInputs.filter(function (i) { return !i.disabled; });
       const target = !enabled.every(function (i) { return i.checked; });
       enabled.forEach(function (i) { i.checked = target; });
       update();
