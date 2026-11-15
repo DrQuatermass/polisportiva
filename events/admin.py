@@ -4,14 +4,17 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django import forms
 from django.contrib import admin
-from django.http import HttpResponse
-from django.urls import reverse
+from django.contrib import messages
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from ckeditor.widgets import CKEditorWidget
 
+from .emails import send_confirmation_email, send_receipt_rejected
 from .models import (
-    Event, EventImage, EventOption, Registration, RegistrationAnswer, RegistrationField,
+    BankTransferSettings, Event, EventImage, EventOption, Registration, RegistrationAnswer,
+    RegistrationField,
 )
 
 
@@ -110,6 +113,7 @@ class EventAdmin(admin.ModelAdmin):
                 'max_registrations',
                 'registration_price',
                 'bundle_price',
+                'accept_bank_transfer',
                 'registration_notes',
             ],
             'classes': ['collapse'],
@@ -168,14 +172,124 @@ class OptionFilter(admin.SimpleListFilter):
 
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
-    list_display = ['event', 'email', 'submitted_at', 'stato_pagamento', 'amount_paid', 'lezioni']
+    list_display = ['event', 'email', 'submitted_at', 'stato_pagamento', 'amount_paid', 'lezioni', 'bonifico']
     list_filter = ['payment_status', 'event', OptionFilter]
-    search_fields = ['email', 'event__title']
+    search_fields = ['email', 'event__title', 'transfer_code']
     ordering = ['-submitted_at']
-    readonly_fields = ['id', 'event', 'email', 'submitted_at',
-                       'payment_status', 'paypal_order_id', 'amount_paid', 'options']
+    fieldsets = [
+        (None, {'fields': ['id', 'event', 'email', 'submitted_at', 'options']}),
+        ('Pagamento', {'fields': ['payment_status', 'amount_paid', 'paypal_order_id']}),
+        ('Bonifico', {
+            'fields': ['transfer_code', 'causale', 'transfer_chosen_at', 'scadenza_bonifico',
+                       'distinta', 'receipt_uploaded_at', 'transfer_note'],
+            'description': "Controlla l'accredito (o la distinta), poi usa i pulsanti in fondo: "
+                           '"Bonifico ricevuto" conferma l\'iscrizione e invia l\'email; '
+                           '"Rifiuta distinta" invia all\'iscritto la nota qui sotto e gli chiede di ricaricarla.',
+        }),
+    ]
+    readonly_fields = ['id', 'event', 'email', 'submitted_at', 'payment_status', 'paypal_order_id',
+                       'amount_paid', 'options', 'transfer_code', 'causale', 'transfer_chosen_at',
+                       'scadenza_bonifico', 'distinta', 'receipt_uploaded_at']
     inlines = [RegistrationAnswerInline]
-    actions = ['export_csv']
+    actions = ['mark_transfer_received', 'cancel_registrations', 'export_csv']
+    change_form_template = 'admin/events/registration/transfer_change_form.html'
+
+    # --- Distinta: scaricabile solo da qui, mai da un URL pubblico ---
+
+    def get_urls(self):
+        custom = [
+            path('<uuid:registration_id>/distinta/',
+                 self.admin_site.admin_view(self.receipt_view),
+                 name='events_registration_receipt'),
+        ]
+        return custom + super().get_urls()
+
+    def receipt_view(self, request, registration_id):
+        registration = self.get_object(request, str(registration_id))
+        if registration is None or not self.has_view_permission(request, registration):
+            raise Http404
+        if not registration.transfer_receipt:
+            raise Http404
+        ext = registration.transfer_receipt.name.rsplit('.', 1)[-1].lower()
+        return FileResponse(
+            registration.transfer_receipt.open('rb'),
+            filename=f'distinta-{registration.transfer_code}.{ext}',
+        )
+
+    def distinta(self, obj):
+        if not obj.transfer_receipt:
+            return '-'
+        url = reverse('admin:events_registration_receipt', args=[obj.pk])
+        return format_html('<a href="{}" target="_blank" rel="noopener">Apri la distinta</a>', url)
+    distinta.short_description = 'Distinta'
+
+    def causale(self, obj):
+        return obj.transfer_reference if obj.transfer_code else '-'
+    causale.short_description = 'Causale attesa'
+
+    def scadenza_bonifico(self, obj):
+        deadline = obj.transfer_deadline
+        if not deadline:
+            return '-'
+        text = timezone.localtime(deadline).strftime('%d/%m/%Y')
+        if obj.transfer_overdue:
+            return format_html('<strong class="transfer-overdue">{} (scaduto)</strong>', text)
+        return text
+    scadenza_bonifico.short_description = 'Scadenza bonifico'
+
+    def bonifico(self, obj):
+        if not obj.transfer_code:
+            return '-'
+        if obj.payment_status == 'transfer_review':
+            return f'{obj.transfer_code} · distinta da verificare'
+        if obj.transfer_overdue:
+            return format_html('{} · <strong class="transfer-overdue">scaduto</strong>', obj.transfer_code)
+        if obj.payment_status == 'transfer' and obj.transfer_chosen_at:
+            days = (timezone.now() - obj.transfer_chosen_at).days
+            return f'{obj.transfer_code} · in attesa da {days} g'
+        return obj.transfer_code
+    bonifico.short_description = 'Bonifico'
+
+    # --- Azioni bonifico ---
+
+    def _confirm_transfer(self, registration):
+        registration.payment_status = 'completed'
+        registration.transfer_note = ''
+        registration.save(update_fields=['payment_status', 'transfer_note'])
+        send_confirmation_email(registration)
+
+    @admin.action(description='Bonifico ricevuto: conferma e invia email')
+    def mark_transfer_received(self, request, queryset):
+        done = 0
+        for registration in queryset.filter(payment_status__in=['transfer', 'transfer_review']):
+            self._confirm_transfer(registration)
+            done += 1
+        skipped = queryset.count() - done
+        self.message_user(request, f'{done} iscrizioni confermate.', messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f'{skipped} ignorate perché non in attesa di bonifico.', messages.WARNING)
+
+    @admin.action(description='Annulla iscrizioni non pagate (libera il posto)')
+    def cancel_registrations(self, request, queryset):
+        n = queryset.exclude(payment_status__in=['completed', 'free', 'review']).update(payment_status='cancelled')
+        self.message_user(
+            request,
+            f'{n} iscrizioni annullate. Quelle già pagate o gratuite non vengono toccate.',
+            messages.SUCCESS,
+        )
+
+    def response_change(self, request, obj):
+        if '_transfer_ok' in request.POST and obj.is_bank_transfer:
+            self._confirm_transfer(obj)
+            self.message_user(request, 'Bonifico confermato: email di conferma inviata.', messages.SUCCESS)
+            return HttpResponseRedirect(request.path)
+        if '_transfer_reject' in request.POST and obj.payment_status == 'transfer_review':
+            obj.payment_status = 'transfer'
+            obj.save(update_fields=['payment_status'])
+            send_receipt_rejected(obj)
+            self.message_user(request, "Distinta rifiutata: l'iscritto è stato avvisato via email.", messages.WARNING)
+            return HttpResponseRedirect(request.path)
+        return super().response_change(request, obj)
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('options')
@@ -202,7 +316,7 @@ class RegistrationAdmin(admin.ModelAdmin):
         response.write('﻿')  # BOM: Excel apre correttamente gli accenti
         writer = csv.writer(response, delimiter=';')
         writer.writerow(['Evento', 'Data iscrizione', 'Email', 'Stato pagamento',
-                         'Importo (EUR)', 'Lezioni'] + labels)
+                         'Importo (EUR)', 'Codice bonifico', 'Lezioni'] + labels)
         for reg in queryset:
             answers = {}
             for answer in reg.answers.all():
@@ -214,6 +328,7 @@ class RegistrationAdmin(admin.ModelAdmin):
                 reg.email,
                 reg.get_payment_status_display(),
                 str(reg.amount_paid).replace('.', ','),
+                reg.transfer_code,
                 self.lezioni(reg),
             ] + [answers.get(label, '') for label in labels])
         return response
@@ -224,6 +339,8 @@ class RegistrationAdmin(admin.ModelAdmin):
             'completed': '#198754',
             'pending':   '#fd7e14',
             'review':    '#0d6efd',
+            'transfer':  '#fd7e14',
+            'transfer_review': '#6f42c1',
             'failed':    '#dc3545',
             'cancelled': '#6c757d',
         }
@@ -236,4 +353,24 @@ class RegistrationAdmin(admin.ModelAdmin):
     stato_pagamento.short_description = 'Pagamento'
 
     def has_add_permission(self, request):
+        return False
+
+
+@admin.register(BankTransferSettings)
+class BankTransferSettingsAdmin(admin.ModelAdmin):
+    """Scheda unica: la lista porta direttamente al modulo di modifica."""
+    fields = ['beneficiary', 'iban', 'bank_name', 'hold_days', 'min_days_before',
+              'notify_email', 'instructions']
+    search_fields = ['beneficiary', 'iban']
+    list_filter = []
+    ordering = ['pk']
+
+    def changelist_view(self, request, extra_context=None):
+        obj = BankTransferSettings.load()
+        return HttpResponseRedirect(reverse('admin:events_banktransfersettings_change', args=[obj.pk]))
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

@@ -2,12 +2,14 @@ from django.urls import path
 from .views import (
     EventDetailView, EventListView,
     event_register, event_payment, event_registration_confirm,
-    event_social_image, paypal_start, paypal_return, paypal_webhook,
+    event_social_image, choose_bank_transfer, upload_transfer_receipt, paypal_start, paypal_return, paypal_webhook,
 )
 
 urlpatterns = [
     path('', EventListView.as_view(), name='events_list'),
     path('iscrizione/<uuid:registration_id>/', event_payment, name='event_payment'),
+    path('iscrizione/<uuid:registration_id>/bonifico/', choose_bank_transfer, name='choose_bank_transfer'),
+    path('iscrizione/<uuid:registration_id>/distinta/', upload_transfer_receipt, name='upload_transfer_receipt'),
     path('conferma/<uuid:registration_id>/', event_registration_confirm, name='event_registration_confirm'),
     path('paypal/start/<uuid:registration_id>/', paypal_start, name='paypal_start'),
     path('paypal/return/<uuid:registration_id>/', paypal_return, name='paypal_return'),

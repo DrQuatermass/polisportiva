@@ -274,3 +274,194 @@ class EventOptionsTests(TestCase):
         self.assertIn('Lezione 2', content)
         self.assertIn('Mario', content)
         self.assertIn('40', content)
+
+
+class BankTransferTests(TestCase):
+    """Pagamento con bonifico e caricamento distinta."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        from decimal import Decimal
+        from .models import BankTransferSettings, EventOption, Registration
+
+        self.private_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.private_dir, ignore_errors=True)
+        override = override_settings(PRIVATE_MEDIA_ROOT=self.private_dir, CONTACT_EMAIL='admin@example.test')
+        override.enable()
+        self.addCleanup(override.disable)
+
+        bank = BankTransferSettings.load()
+        bank.beneficiary = 'Polisportiva Sanmarinese'
+        bank.iban = 'it60 x054 2811 1010 0000 0123 456'
+        bank.save()
+
+        now = timezone.now()
+        self.event = Event.objects.create(
+            title='Corso di cucina', slug='corso-cucina', description='Corso',
+            date=now + timedelta(days=10), location='Carpi', published=True,
+            registration_enabled=True, accept_bank_transfer=True,
+        )
+        self.option = EventOption.objects.create(
+            event=self.event, title='Tortellini', price=Decimal('25'),
+            date=now + timedelta(days=10), max_participants=1,
+        )
+        self.reg = Registration.objects.create(
+            event=self.event, email='mario@example.test', payment_status='pending',
+            amount_paid=Decimal('25'),
+        )
+        self.reg.options.set([self.option])
+
+    def _choose(self):
+        return self.client.post(reverse('choose_bank_transfer', args=[self.reg.id]))
+
+    def _pdf(self, name='distinta.pdf', content=b'%PDF-1.4 test'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return SimpleUploadedFile(name, content, content_type='application/pdf')
+
+    def test_iban_is_normalised(self):
+        from .models import BankTransferSettings
+        bank = BankTransferSettings.load()
+        self.assertEqual(bank.iban, 'IT60X0542811101000000123456')
+        self.assertEqual(bank.iban_display, 'IT60 X054 2811 1010 0000 0123 456')
+
+    def test_payment_page_offers_transfer(self):
+        response = self.client.get(reverse('event_payment', args=[self.reg.id]))
+        self.assertContains(response, 'Pago con bonifico')
+
+    def test_transfer_hidden_when_event_does_not_accept_it(self):
+        self.event.accept_bank_transfer = False
+        self.event.save()
+        response = self.client.get(reverse('event_payment', args=[self.reg.id]))
+        self.assertNotContains(response, 'Pago con bonifico')
+        self._choose()
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'pending')
+
+    def test_transfer_hidden_when_start_is_too_close(self):
+        self.option.date = timezone.now() + timedelta(days=1)
+        self.option.save()
+        self.assertFalse(self.reg.bank_transfer_allowed())
+
+    def test_choose_transfer_holds_seat_and_emails_instructions(self):
+        from django.core import mail
+        response = self._choose()
+        self.assertRedirects(response, reverse('event_payment', args=[self.reg.id]), fetch_redirect_response=False)
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'transfer')
+        self.assertEqual(len(self.reg.transfer_code), 6)
+        self.assertTrue(self.option.is_full)  # il posto è riservato
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('IT60 X054', mail.outbox[0].body)
+        self.assertIn(self.reg.transfer_reference, mail.outbox[0].body)
+
+        page = self.client.get(reverse('event_payment', args=[self.reg.id]))
+        self.assertContains(page, 'IT60 X054 2811')
+        self.assertContains(page, 'Carica la distinta')
+
+    def test_upload_receipt_is_private_and_alerts_admin(self):
+        import os
+        from django.core import mail
+        self._choose()
+        mail.outbox.clear()
+        response = self.client.post(
+            reverse('upload_transfer_receipt', args=[self.reg.id]), {'distinta': self._pdf()},
+        )
+        self.assertRedirects(
+            response, reverse('event_payment', args=[self.reg.id]) + '?distinta=1',
+            fetch_redirect_response=False,
+        )
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'transfer_review')
+        path = self.reg.transfer_receipt.path
+        self.assertTrue(path.startswith(os.path.abspath(self.private_dir)))
+        self.assertNotIn('distinta.pdf', path)  # nome casuale
+        with self.assertRaises(ValueError):
+            self.reg.transfer_receipt.url
+        self.assertEqual(mail.outbox[0].to, ['admin@example.test'])
+
+    def test_upload_rejects_fake_or_wrong_files(self):
+        self._choose()
+        url = reverse('upload_transfer_receipt', args=[self.reg.id])
+        fake = self._pdf(content=b'MZ not a pdf')
+        response = self.client.post(url, {'distinta': fake})
+        self.assertContains(response, 'Formato non valido')
+        exe = self._pdf(name='virus.exe', content=b'%PDF')
+        response = self.client.post(url, {'distinta': exe})
+        self.assertContains(response, 'Formato non valido')
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'transfer')
+
+    def test_upload_not_allowed_before_choosing_transfer(self):
+        response = self.client.post(
+            reverse('upload_transfer_receipt', args=[self.reg.id]), {'distinta': self._pdf()},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def _admin_client(self):
+        from django.contrib.auth import get_user_model
+        user = get_user_model().objects.create_superuser('admin', 'a@example.test', 'pw')
+        self.client.force_login(user)
+
+    def test_admin_receipt_download_requires_login(self):
+        self._choose()
+        self.client.post(reverse('upload_transfer_receipt', args=[self.reg.id]), {'distinta': self._pdf()})
+        url = reverse('admin:events_registration_receipt', args=[self.reg.id])
+        self.assertEqual(self.client.get(url).status_code, 302)  # verso il login
+        self._admin_client()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b''.join(response.streaming_content), b'%PDF-1.4 test')
+
+    def test_admin_confirm_button_completes_and_emails(self):
+        from django.core import mail
+        self._choose()
+        self._admin_client()
+        mail.outbox.clear()
+        url = reverse('admin:events_registration_change', args=[self.reg.id])
+        page = self.client.get(url)
+        self.assertContains(page, 'Bonifico ricevuto')
+        self.client.post(url, {
+            'transfer_note': '', '_transfer_ok': '1',
+            'answers-TOTAL_FORMS': '0', 'answers-INITIAL_FORMS': '0',
+        })
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'completed')
+        self.assertEqual(mail.outbox[0].subject, 'Conferma iscrizione: Corso di cucina')
+
+    def test_admin_reject_sends_note_and_allows_reupload(self):
+        from django.core import mail
+        self._choose()
+        self.client.post(reverse('upload_transfer_receipt', args=[self.reg.id]), {'distinta': self._pdf()})
+        self._admin_client()
+        mail.outbox.clear()
+        url = reverse('admin:events_registration_change', args=[self.reg.id])
+        self.client.post(url, {
+            'transfer_note': 'Importo diverso da quello dovuto', '_transfer_reject': '1',
+            'answers-TOTAL_FORMS': '0', 'answers-INITIAL_FORMS': '0',
+        })
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'transfer')
+        self.assertIn('Importo diverso', mail.outbox[0].body)
+        page = self.client.get(reverse('event_payment', args=[self.reg.id]))
+        self.assertContains(page, 'non è stata accettata')
+
+    def test_admin_bulk_action_and_cancel(self):
+        from .admin import RegistrationAdmin
+        from .models import Registration
+        self._choose()
+        admin = RegistrationAdmin(Registration, AdminSite())
+        admin.message_user = lambda *a, **k: None
+        admin.cancel_registrations(None, Registration.objects.all())
+        self.reg.refresh_from_db()
+        self.assertEqual(self.reg.payment_status, 'cancelled')
+        self.assertFalse(self.option.is_full)  # posto liberato
+
+    def test_bank_settings_admin_is_single_page(self):
+        self._admin_client()
+        response = self.client.get(reverse('admin:events_banktransfersettings_changelist'))
+        self.assertRedirects(response, reverse('admin:events_banktransfersettings_change', args=[1]))
+
+    def test_payment_page_is_never_cached(self):
+        response = self.client.get(reverse('event_payment', args=[self.reg.id]))
+        self.assertIn('no-store', response['Cache-Control'])

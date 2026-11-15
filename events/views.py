@@ -1,23 +1,28 @@
 import json
 import logging
+import os
 import uuid
 
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
 from config.social_images import social_image_response
 
+from .emails import (
+    send_admin_receipt_alert, send_confirmation_email as _send_confirmation_email,
+    send_transfer_instructions,
+)
 from .forms import build_registration_form
-from .models import Event, Registration, RegistrationAnswer
+from .models import BankTransferSettings, Event, Registration, RegistrationAnswer
 
 logger = logging.getLogger(__name__)
 
@@ -69,55 +74,6 @@ def _extract_custom_id(result):
         return pu['payments']['captures'][0].get('custom_id')
     except (KeyError, IndexError, TypeError):
         return None
-
-
-def _send_confirmation_email(registration):
-    event = registration.event
-    status = registration.payment_status
-    if status == 'completed':
-        payment_note = 'Pagamento ricevuto.'
-    elif status == 'review':
-        payment_note = (
-            'Abbiamo ricevuto il pagamento: è in fase di verifica da parte di PayPal. '
-            'Ti confermeremo appena la verifica sarà completata.'
-        )
-    else:
-        payment_note = ''
-
-    subject = f'Conferma iscrizione: {event.title}'
-    body = (
-        f'Ciao,\n\n'
-        f'la tua iscrizione all\'evento "{event.title}" è stata ricevuta con successo.\n'
-    )
-    options = list(registration.options.all())
-    if options:
-        body += '\nLezioni scelte:\n'
-        for option in options:
-            local_date = timezone.localtime(option.date)
-            body += f'  - {local_date.strftime("%d/%m/%Y %H:%M")} {option.title}\n'
-        body += '\n'
-    elif event.date:
-        body += f'Data evento: {event.date.strftime("%d/%m/%Y %H:%M")}\n'
-    if registration.amount_paid:
-        body += f'Importo: € {registration.amount_paid}\n'
-    if payment_note:
-        body += f'{payment_note}\n'
-    body += (
-        f'\nNumero iscrizione: {registration.id}\n\n'
-        f'Per qualsiasi informazione contattaci a {settings.CONTACT_EMAIL}.\n\n'
-        f'Polisportiva Sanmarinese di Carpi'
-    )
-
-    try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[registration.email],
-            fail_silently=False,
-        )
-    except Exception as e:
-        logger.error('Errore invio email conferma iscrizione %s: %s', registration.id, e)
 
 
 class EventListView(ListView):
@@ -214,15 +170,98 @@ def event_register(request, slug):
     })
 
 
-def event_payment(request, registration_id):
-    registration = get_object_or_404(Registration, id=registration_id)
-    return render(request, 'events/payment.html', {
+RECEIPT_MAX_SIZE = 5 * 1024 * 1024
+# Estensione → firme iniziali ammesse (controllo minimo sul contenuto reale).
+RECEIPT_SIGNATURES = {
+    '.pdf': (b'%PDF',),
+    '.jpg': (b'\xff\xd8\xff',),
+    '.jpeg': (b'\xff\xd8\xff',),
+    '.png': (b'\x89PNG',),
+}
+
+
+def _payment_context(request, registration, **extra):
+    context = {
         'registration': registration,
         'paypal_client_id': getattr(settings, 'PAYPAL_CLIENT_ID', ''),
         'cancelled': request.GET.get('annullato') == '1',
-    })
+        'receipt_uploaded': request.GET.get('distinta') == '1',
+        'transfer_allowed': (
+            registration.payment_status == 'pending' and registration.bank_transfer_allowed()
+        ),
+    }
+    if registration.is_bank_transfer or context['transfer_allowed']:
+        context['bank'] = BankTransferSettings.load()
+    context.update(extra)
+    return context
 
 
+# Stato che cambia (bonifico scelto, distinta caricata...): mai dalla cache per-site.
+@never_cache
+def event_payment(request, registration_id):
+    registration = get_object_or_404(Registration, id=registration_id)
+    return render(request, 'events/payment.html', _payment_context(request, registration))
+
+
+def _unavailable_options(registration):
+    return [o.title for o in registration.options.all() if not o.is_available]
+
+
+@require_POST
+def choose_bank_transfer(request, registration_id):
+    """L'iscritto sceglie il bonifico: il posto resta riservato per alcuni
+    giorni e riceve via email IBAN, importo e causale."""
+    registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
+    if not registration.bank_transfer_allowed():
+        return _payment_error_page(
+            request, registration, 'Il pagamento con bonifico non è disponibile per questa iscrizione.'
+        )
+    unavailable = _unavailable_options(registration)
+    if unavailable:
+        return _payment_error_page(
+            request, registration,
+            'Nel frattempo queste lezioni non sono più disponibili: '
+            f'{", ".join(unavailable)}. Torna alla pagina dell\'evento e ripeti l\'iscrizione.',
+        )
+    registration.choose_bank_transfer()
+    send_transfer_instructions(registration)
+    return redirect('event_payment', registration_id=registration.id)
+
+
+@require_POST
+def upload_transfer_receipt(request, registration_id):
+    """Caricamento (o ricaricamento) della distinta del bonifico."""
+    registration = get_object_or_404(
+        Registration, id=registration_id, payment_status__in=['transfer', 'transfer_review'],
+    )
+    upload = request.FILES.get('distinta')
+    error = None
+    if not upload:
+        error = 'Seleziona il file della distinta.'
+    else:
+        ext = os.path.splitext(upload.name)[1].lower()
+        head = upload.read(8)
+        upload.seek(0)
+        if ext not in RECEIPT_SIGNATURES or not head.startswith(RECEIPT_SIGNATURES[ext]):
+            error = 'Formato non valido: carica un PDF, JPG o PNG.'
+        elif upload.size > RECEIPT_MAX_SIZE:
+            error = 'Il file è troppo grande (massimo 5 MB).'
+    if error:
+        return render(request, 'events/payment.html',
+                      _payment_context(request, registration, upload_error=error))
+
+    if registration.transfer_receipt:
+        registration.transfer_receipt.delete(save=False)
+    registration.transfer_receipt = upload
+    registration.receipt_uploaded_at = timezone.now()
+    registration.payment_status = 'transfer_review'
+    registration.transfer_note = ''
+    registration.save()
+    send_admin_receipt_alert(registration)
+    return redirect(reverse('event_payment', args=[registration.id]) + '?distinta=1')
+
+
+@never_cache
 def event_registration_confirm(request, registration_id):
     registration = get_object_or_404(Registration, id=registration_id)
     return render(request, 'events/registration_confirm.html', {
@@ -247,11 +286,8 @@ def _get_paypal_token():
 
 
 def _payment_error_page(request, registration, message):
-    return render(request, 'events/payment.html', {
-        'registration': registration,
-        'paypal_client_id': getattr(settings, 'PAYPAL_CLIENT_ID', ''),
-        'payment_error': message,
-    })
+    return render(request, 'events/payment.html',
+                  _payment_context(request, registration, payment_error=message))
 
 
 @require_POST
@@ -261,7 +297,7 @@ def paypal_start(request, registration_id):
     registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
 
     # Tra iscrizione e pagamento una lezione può essersi riempita o chiusa.
-    unavailable = [o.title for o in registration.options.all() if not o.is_available]
+    unavailable = _unavailable_options(registration)
     if unavailable:
         return _payment_error_page(
             request, registration,

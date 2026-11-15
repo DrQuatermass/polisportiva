@@ -1,8 +1,13 @@
+import os
 import re
+import secrets
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 from html import unescape
 
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -10,8 +15,34 @@ from django.utils.html import strip_tags
 
 from config.image_utils import optimize_image_field
 
-# Stati che occupano un posto (gratuito, pagato, o pagato ma in verifica PayPal).
-CONFIRMED_STATUSES = ['free', 'completed', 'review']
+# Stati che occupano un posto: gratuito, pagato, pagato ma in verifica PayPal,
+# o bonifico annunciato (in attesa o con distinta da verificare).
+CONFIRMED_STATUSES = ['free', 'completed', 'review', 'transfer', 'transfer_review']
+
+
+class PrivateStorage(FileSystemStorage):
+    """Storage fuori da MEDIA_ROOT: i file non hanno un URL pubblico.
+    La cartella è letta da settings a ogni accesso (utile anche nei test)."""
+
+    @property
+    def base_location(self):
+        return str(settings.PRIVATE_MEDIA_ROOT)
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+    def url(self, name):
+        raise ValueError('I file privati non hanno un URL pubblico.')
+
+
+def private_storage():
+    return PrivateStorage()
+
+
+def receipt_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f'distinte/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}'
 
 
 class Event(models.Model):
@@ -44,6 +75,11 @@ class Event(models.Model):
     max_registrations = models.PositiveIntegerField(blank=True, null=True, verbose_name='Posti massimi', help_text='Lascia vuoto per illimitato')
     registration_price = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Quota iscrizione (EUR)', help_text='0 = gratuito')
     registration_notes = models.TextField(blank=True, verbose_name='Note per gli iscritti', help_text='Testo mostrato sopra il form')
+    accept_bank_transfer = models.BooleanField(
+        default=False, verbose_name='Accetta bonifico',
+        help_text='Oltre a PayPal, permette di pagare con bonifico bancario '
+                  '(IBAN e regole in "Dati per il bonifico").',
+    )
     bundle_price = models.DecimalField(
         max_digits=8, decimal_places=2, blank=True, null=True,
         verbose_name='Prezzo pacchetto completo (EUR)',
@@ -247,6 +283,8 @@ class Registration(models.Model):
         ('free',      'Gratuito'),
         ('pending',   'In attesa di pagamento'),
         ('review',    'In verifica PayPal'),
+        ('transfer',  'In attesa di bonifico'),
+        ('transfer_review', 'Distinta da verificare'),
         ('completed', 'Pagamento completato'),
         ('failed',    'Pagamento fallito'),
         ('cancelled', 'Annullato'),
@@ -261,6 +299,22 @@ class Registration(models.Model):
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Importo pagato (EUR)')
     options = models.ManyToManyField(
         EventOption, blank=True, related_name='registrations', verbose_name='Lezioni scelte',
+    )
+
+    # --- Bonifico ---
+    transfer_code = models.CharField(
+        max_length=12, blank=True, db_index=True, verbose_name='Codice bonifico',
+        help_text='Da cercare nella causale del bonifico',
+    )
+    transfer_chosen_at = models.DateTimeField(blank=True, null=True, verbose_name='Bonifico scelto il')
+    transfer_receipt = models.FileField(
+        upload_to=receipt_upload_to, storage=private_storage, blank=True,
+        verbose_name='Distinta bonifico',
+    )
+    receipt_uploaded_at = models.DateTimeField(blank=True, null=True, verbose_name='Distinta caricata il')
+    transfer_note = models.TextField(
+        blank=True, verbose_name="Nota per l'iscritto",
+        help_text="Motivo del rifiuto della distinta: viene inviato all'iscritto via email.",
     )
 
     class Meta:
@@ -279,6 +333,49 @@ class Registration(models.Model):
     def is_under_review(self):
         return self.payment_status == 'review'
 
+    @property
+    def is_bank_transfer(self):
+        return self.payment_status in ('transfer', 'transfer_review')
+
+    @property
+    def transfer_reference(self):
+        """Causale da indicare nel bonifico."""
+        return f'ISCR {self.transfer_code} {self.event.title}'[:140]
+
+    @property
+    def transfer_deadline(self):
+        if not self.transfer_chosen_at:
+            return None
+        return self.transfer_chosen_at + timedelta(days=BankTransferSettings.load().hold_days)
+
+    @property
+    def transfer_overdue(self):
+        deadline = self.transfer_deadline
+        return self.payment_status == 'transfer' and deadline is not None and timezone.now() > deadline
+
+    @property
+    def first_activity_date(self):
+        """Data della prima lezione scelta (o dell'evento)."""
+        dates = [o.date for o in self.options.all()]
+        return min(dates) if dates else self.event.date
+
+    def bank_transfer_allowed(self):
+        """Il bonifico si può scegliere solo se l'evento lo accetta, i dati
+        bancari sono configurati e c'è abbastanza tempo prima dell'inizio."""
+        if not self.event.accept_bank_transfer:
+            return False
+        bank = BankTransferSettings.load()
+        if not bank.is_configured:
+            return False
+        return timezone.now() + timedelta(days=bank.min_days_before) <= self.first_activity_date
+
+    def choose_bank_transfer(self):
+        if not self.transfer_code:
+            self.transfer_code = secrets.token_hex(3).upper()
+        self.payment_status = 'transfer'
+        self.transfer_chosen_at = timezone.now()
+        self.save(update_fields=['transfer_code', 'payment_status', 'transfer_chosen_at'])
+
 
 class RegistrationAnswer(models.Model):
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='answers')
@@ -289,3 +386,56 @@ class RegistrationAnswer(models.Model):
     def __str__(self):
         label = self.field.label if self.field else '?'
         return f'{label}: {self.value or "(file)"}'
+
+
+class BankTransferSettings(models.Model):
+    """Dati per il bonifico, unici per tutto il sito (modificabili dall'admin)."""
+    beneficiary = models.CharField(max_length=200, blank=True, verbose_name='Intestatario')
+    iban = models.CharField(max_length=40, blank=True, verbose_name='IBAN')
+    bank_name = models.CharField(max_length=200, blank=True, verbose_name='Banca')
+    hold_days = models.PositiveIntegerField(
+        default=5, verbose_name='Giorni per pagare',
+        help_text='Per quanti giorni il posto resta riservato a chi sceglie il bonifico.',
+    )
+    min_days_before = models.PositiveIntegerField(
+        default=3, verbose_name="Giorni minimi prima dell'inizio",
+        help_text='Se la prima lezione/evento è più vicina di così, il bonifico non viene proposto.',
+    )
+    notify_email = models.EmailField(
+        blank=True, verbose_name='Email per gli avvisi',
+        help_text='Riceve un avviso quando un iscritto carica la distinta. '
+                  'Vuoto = indirizzo contatti del sito.',
+    )
+    instructions = models.TextField(
+        blank=True, verbose_name='Istruzioni aggiuntive',
+        help_text='Testo facoltativo mostrato sotto i dati del bonifico.',
+    )
+
+    class Meta:
+        verbose_name = 'Dati per il bonifico'
+        verbose_name_plural = 'Dati per il bonifico'
+
+    def __str__(self):
+        return 'Dati per il bonifico'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        self.iban = self.iban.replace(' ', '').upper()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def is_configured(self):
+        return bool(self.iban and self.beneficiary)
+
+    @property
+    def iban_display(self):
+        return ' '.join(self.iban[i:i + 4] for i in range(0, len(self.iban), 4))
+
+    @property
+    def alert_email(self):
+        return self.notify_email or settings.CONTACT_EMAIL
