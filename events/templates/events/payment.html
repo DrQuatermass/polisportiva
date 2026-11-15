@@ -13,7 +13,7 @@
 <section class="py-5">
   <div class="container">
     <div class="row justify-content-center">
-      <div class="col-lg-5">
+      <div class="col-lg-6">
 
         <div class="card border-0 shadow-sm p-4 mb-4">
           <h2 class="h5 fw-bold mb-3">Riepilogo</h2>
@@ -25,6 +25,23 @@
             <span class="text-muted">Email</span>
             <span>{{ registration.email }}</span>
           </div>
+          {% with options=registration.options.all %}
+          {% if options %}
+          <hr>
+          <p class="text-muted mb-2">Lezioni scelte</p>
+          <ul class="list-unstyled mb-0">
+            {% for option in options %}
+            <li class="d-flex justify-content-between mb-1">
+              <span>{{ option.date|date:"d/m" }} — {{ option.title }}</span>
+              <span>€ {{ option.price|floatformat:"-2" }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if registration.event.bundle_price is not None and options|length == registration.event.options.count and registration.amount_paid < registration.event.options_total_price %}
+          <p class="small text-success mb-0 mt-1"><i class="bi bi-tag me-1"></i>Prezzo pacchetto completo applicato</p>
+          {% endif %}
+          {% endif %}
+          {% endwith %}
           <hr>
           <div class="d-flex justify-content-between fw-bold fs-5">
             <span>Totale</span>
@@ -32,33 +49,158 @@
           </div>
         </div>
 
-        <div class="card border-0 shadow-sm p-4">
+        {% if payment_error %}
+        <div class="alert alert-danger">{{ payment_error }}</div>
+        {% endif %}
+
+        {% if registration.is_bank_transfer %}
+        {# ── Bonifico scelto: dati, scadenza, caricamento distinta ── #}
+
+        {% if receipt_uploaded or registration.payment_status == "transfer_review" %}
+        <div class="alert alert-success d-flex gap-3 align-items-start">
+          <i class="bi bi-check-circle-fill fs-4" aria-hidden="true"></i>
+          <div>
+            <strong>Distinta ricevuta.</strong>
+            La verifichiamo e ti confermiamo l'iscrizione via email a <strong>{{ registration.email }}</strong>.
+          </div>
+        </div>
+        {% elif registration.transfer_note %}
+        <div class="alert alert-warning">
+          <strong>La distinta caricata non è stata accettata.</strong><br>
+          {{ registration.transfer_note }}
+        </div>
+        {% endif %}
+
+        <div class="card border-0 shadow-sm p-4 mb-4">
           <h2 class="h5 fw-bold mb-3">
-            <i class="bi bi-paypal text-primary me-2"></i>Paga con PayPal
+            <i class="bi bi-bank text-danger me-2" aria-hidden="true"></i>Dati per il bonifico
+          </h2>
+          <dl class="transfer-details mb-0">
+            <dt>Intestatario</dt>
+            <dd>{{ bank.beneficiary }}</dd>
+            <dt>IBAN</dt>
+            <dd>
+              <span class="font-monospace">{{ bank.iban_display }}</span>
+              <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-copy="{{ bank.iban }}">Copia</button>
+            </dd>
+            {% if bank.bank_name %}
+            <dt>Banca</dt>
+            <dd>{{ bank.bank_name }}</dd>
+            {% endif %}
+            <dt>Importo</dt>
+            <dd class="fw-bold">€ {{ registration.amount_paid }}</dd>
+            <dt>Causale</dt>
+            <dd>
+              <span class="font-monospace">{{ registration.transfer_reference }}</span>
+              <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-copy="{{ registration.transfer_reference }}">Copia</button>
+            </dd>
+            {% if registration.transfer_deadline and registration.payment_status == "transfer" %}
+            <dt>Entro il</dt>
+            <dd>{{ registration.transfer_deadline|date:"l d F Y" }}</dd>
+            {% endif %}
+          </dl>
+          {% if bank.instructions %}
+          <p class="small text-muted mt-3 mb-0">{{ bank.instructions|linebreaksbr }}</p>
+          {% endif %}
+          <p class="small text-muted mt-3 mb-0">
+            Indica la causale esatta: ci serve per riconoscere il tuo pagamento.
+            Ti abbiamo inviato questi dati anche via email.
+          </p>
+        </div>
+
+        <div class="card border-0 shadow-sm p-4 mb-4">
+          <h2 class="h5 fw-bold mb-2">
+            <i class="bi bi-file-earmark-arrow-up text-danger me-2" aria-hidden="true"></i>
+            {% if registration.transfer_receipt %}Carica una nuova distinta{% else %}Hai già fatto il bonifico? Carica la distinta{% endif %}
+          </h2>
+          <p class="small text-muted">
+            Facoltativo, ma ci permette di confermarti prima. PDF, JPG o PNG, massimo 5 MB.
+            Puoi tornare su questa pagina in qualsiasi momento dal link nell'email.
+          </p>
+          {% if upload_error %}
+          <div class="alert alert-danger py-2">{{ upload_error }}</div>
+          {% endif %}
+          <form method="post" action="{% url 'upload_transfer_receipt' registration.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="visually-hidden" for="id_distinta">Distinta del bonifico</label>
+            <input type="file" class="form-control mb-3" id="id_distinta" name="distinta"
+                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required>
+            <button type="submit" class="btn btn-danger w-100">
+              <i class="bi bi-upload me-2" aria-hidden="true"></i>Invia distinta
+            </button>
+          </form>
+        </div>
+
+        {% elif registration.payment_status == "pending" %}
+        {# ── Ancora da pagare: PayPal e, se ammesso, bonifico ── #}
+
+        <div class="card border-0 shadow-sm p-4 mb-4">
+          <h2 class="h5 fw-bold mb-3">
+            <i class="bi bi-paypal text-primary me-2" aria-hidden="true"></i>Paga con PayPal o carta
           </h2>
           {% if paypal_client_id %}
-          {% if payment_error %}
-          <div class="alert alert-danger">{{ payment_error }}</div>
-          {% elif cancelled %}
+          {% if cancelled %}
           <div class="alert alert-warning">Pagamento annullato. Puoi riprovare quando vuoi.</div>
           {% endif %}
-          <p class="text-muted small mb-4">Clicca il pulsante per pagare in modo sicuro sul sito di PayPal. Puoi usare anche una carta di credito senza avere un account PayPal. Al termine tornerai automaticamente qui.</p>
+          <p class="text-muted small mb-4">Paghi subito in modo sicuro sul sito di PayPal, anche con carta di credito senza account PayPal. L'iscrizione è confermata immediatamente.</p>
 
           <form method="post" action="{% url 'paypal_start' registration.id %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary btn-lg w-100">
-              <i class="bi bi-paypal me-2"></i>Paga € {{ registration.amount_paid }} con PayPal
+              <i class="bi bi-paypal me-2" aria-hidden="true"></i>Paga € {{ registration.amount_paid }} con PayPal
             </button>
           </form>
           {% else %}
           <div class="alert alert-warning mb-0">
-            PayPal non e ancora configurato. Contatta la societa per completare l'iscrizione.
+            PayPal non è ancora configurato. Contatta la società per completare l'iscrizione.
           </div>
           {% endif %}
         </div>
+
+        {% if transfer_allowed %}
+        <div class="card border-0 shadow-sm p-4">
+          <h2 class="h5 fw-bold mb-3">
+            <i class="bi bi-bank text-danger me-2" aria-hidden="true"></i>Paga con bonifico
+          </h2>
+          <p class="text-muted small mb-4">
+            Ti mostriamo IBAN e causale e te li inviamo via email. Il posto resta riservato per
+            {{ bank.hold_days }} giorn{{ bank.hold_days|pluralize:"o,i" }}; l'iscrizione è confermata quando riceviamo il pagamento.
+          </p>
+          <form method="post" action="{% url 'choose_bank_transfer' registration.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-lg w-100">
+              <i class="bi bi-bank me-2" aria-hidden="true"></i>Pago con bonifico
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+        {% else %}
+        {# ── Già pagata, gratuita, annullata ── #}
+        <div class="alert alert-secondary">
+          Stato iscrizione: <strong>{{ registration.get_payment_status_display }}</strong>.
+          {% if registration.is_confirmed or registration.is_under_review %}
+          <a href="{% url 'event_registration_confirm' registration.id %}">Vedi il riepilogo</a>.
+          {% endif %}
+        </div>
+        {% endif %}
 
       </div>
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+document.querySelectorAll('[data-copy]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    navigator.clipboard.writeText(button.dataset.copy).then(function () {
+      button.textContent = 'Copiato';
+      setTimeout(function () { button.textContent = 'Copia'; }, 2000);
+    });
+  });
+});
+</script>
 {% endblock %}

@@ -256,6 +256,10 @@ WHITENOISE_USE_FINDERS = DEBUG  # in dev trova anche quelli non ancora collectat
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# File riservati (es. distinte di bonifico): fuori da MEDIA_ROOT, quindi mai
+# serviti pubblicamente da Apache; si scaricano solo dall'admin dopo il login.
+PRIVATE_MEDIA_ROOT = Path(env('PRIVATE_MEDIA_ROOT', str(BASE_DIR / 'private_media')))
+
 # Email
 # In sviluppo: stampa le email sul terminale
 # In produzione: sostituire con smtp.gmail.com e le credenziali reali

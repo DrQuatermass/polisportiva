@@ -1,13 +1,53 @@
+import os
 import re
+import secrets
 import uuid
+from datetime import timedelta
+from decimal import Decimal
 from html import unescape
 
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
 
 from config.image_utils import optimize_image_field
+
+# Stati che occupano un posto: gratuito, pagato, pagato ma in verifica PayPal,
+# o bonifico annunciato (in attesa o con distinta da verificare).
+CONFIRMED_STATUSES = ['free', 'completed', 'review', 'transfer', 'transfer_review']
+
+
+class PrivateStorage(FileSystemStorage):
+    """Storage fuori da MEDIA_ROOT: i file non hanno un URL pubblico.
+    La cartella è letta da settings a ogni accesso (utile anche nei test)."""
+
+    @property
+    def base_location(self):
+        return str(settings.PRIVATE_MEDIA_ROOT)
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+    def url(self, name):
+        raise ValueError('I file privati non hanno un URL pubblico.')
+
+
+def private_storage():
+    return PrivateStorage()
+
+
+def attachment_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f'allegati/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}'
+
+
+def receipt_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f'distinte/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}'
 
 
 class Event(models.Model):
@@ -40,6 +80,17 @@ class Event(models.Model):
     max_registrations = models.PositiveIntegerField(blank=True, null=True, verbose_name='Posti massimi', help_text='Lascia vuoto per illimitato')
     registration_price = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Quota iscrizione (EUR)', help_text='0 = gratuito')
     registration_notes = models.TextField(blank=True, verbose_name='Note per gli iscritti', help_text='Testo mostrato sopra il form')
+    accept_bank_transfer = models.BooleanField(
+        default=False, verbose_name='Accetta bonifico',
+        help_text='Oltre a PayPal, permette di pagare con bonifico bancario '
+                  '(IBAN e regole in "Dati per il bonifico").',
+    )
+    bundle_price = models.DecimalField(
+        max_digits=8, decimal_places=2, blank=True, null=True,
+        verbose_name='Prezzo pacchetto completo (EUR)',
+        help_text='Solo per eventi con lezioni/opzioni: prezzo se si scelgono tutte. '
+                  'Lascia vuoto per nessuno sconto.',
+    )
 
     class Meta:
         ordering = ['date']
@@ -81,18 +132,53 @@ class Event(models.Model):
         if self.registration_deadline and timezone.now() > self.registration_deadline:
             return False
         if self.max_registrations is not None:
-            confirmed = self.registrations.filter(payment_status__in=['free', 'completed', 'review']).count()
+            confirmed = self.registrations.filter(payment_status__in=CONFIRMED_STATUSES).count()
             if confirmed >= self.max_registrations:
                 return False
+        if self.has_options and not any(o.is_available for o in self.options.all()):
+            return False
         return True
 
     @property
     def registrations_count(self):
-        return self.registrations.filter(payment_status__in=['free', 'completed', 'review']).count()
+        return self.registrations.filter(payment_status__in=CONFIRMED_STATUSES).count()
+
+    @property
+    def has_options(self):
+        return self.options.exists()
 
     @property
     def is_paid(self):
+        if self.has_options:
+            return any(o.price > 0 for o in self.options.all())
         return self.registration_price > 0
+
+    @property
+    def options_total_price(self):
+        return sum((o.price for o in self.options.all()), Decimal('0'))
+
+    @property
+    def bundle_available(self):
+        """Il pacchetto completo è acquistabile solo se tutte le opzioni lo sono."""
+        options = list(self.options.all())
+        return bool(options) and self.bundle_price is not None and all(o.is_available for o in options)
+
+    @property
+    def min_price(self):
+        if self.has_options:
+            return min(o.price for o in self.options.all())
+        return self.registration_price
+
+    def compute_total(self, selected_options):
+        """Totale da pagare per le opzioni scelte (calcolato sempre lato server).
+        Se sono scelte tutte le opzioni e c'è un prezzo pacchetto, si applica
+        quello (mai più della somma delle singole)."""
+        selected = list(selected_options)
+        total = sum((o.price for o in selected), Decimal('0'))
+        all_ids = set(self.options.values_list('pk', flat=True))
+        if self.bundle_price is not None and all_ids and {o.pk for o in selected} == all_ids:
+            total = min(total, self.bundle_price)
+        return total
 
 
 class EventImage(models.Model):
@@ -113,6 +199,54 @@ class EventImage(models.Model):
     def save(self, *args, **kwargs):
         optimize_image_field(self, 'image')
         super().save(*args, **kwargs)
+
+
+class EventOption(models.Model):
+    """Lezione/giornata/modulo di un evento, selezionabile singolarmente
+    nel form di iscrizione, con prezzo e posti propri."""
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='options')
+    title = models.CharField(max_length=200, verbose_name='Titolo')
+    date = models.DateTimeField(verbose_name='Data e ora')
+    price = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Prezzo (EUR)')
+    max_participants = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name='Posti max',
+        help_text='Vuoto = illimitati',
+    )
+    registration_deadline = models.DateTimeField(
+        blank=True, null=True, verbose_name='Chiusura iscrizioni',
+        help_text='Vuoto = si chiude all\'inizio della lezione',
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name='Ordine')
+
+    class Meta:
+        ordering = ['order', 'date', 'id']
+        verbose_name = 'Lezione / opzione'
+        verbose_name_plural = 'Lezioni / opzioni'
+
+    def __str__(self):
+        return f'{self.event} – {self.date:%d/%m} {self.title}'
+
+    @property
+    def participants_count(self):
+        return self.registrations.filter(payment_status__in=CONFIRMED_STATUSES).count()
+
+    @property
+    def is_full(self):
+        return self.max_participants is not None and self.participants_count >= self.max_participants
+
+    @property
+    def is_closed(self):
+        return timezone.now() >= (self.registration_deadline or self.date)
+
+    @property
+    def is_available(self):
+        return not self.is_closed and not self.is_full
+
+    @property
+    def places_left(self):
+        if self.max_participants is None:
+            return None
+        return max(self.max_participants - self.participants_count, 0)
 
 
 class RegistrationField(models.Model):
@@ -154,6 +288,8 @@ class Registration(models.Model):
         ('free',      'Gratuito'),
         ('pending',   'In attesa di pagamento'),
         ('review',    'In verifica PayPal'),
+        ('transfer',  'In attesa di bonifico'),
+        ('transfer_review', 'Distinta da verificare'),
         ('completed', 'Pagamento completato'),
         ('failed',    'Pagamento fallito'),
         ('cancelled', 'Annullato'),
@@ -166,6 +302,25 @@ class Registration(models.Model):
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='free', verbose_name='Stato pagamento')
     paypal_order_id = models.CharField(max_length=200, blank=True)
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Importo pagato (EUR)')
+    options = models.ManyToManyField(
+        EventOption, blank=True, related_name='registrations', verbose_name='Lezioni scelte',
+    )
+
+    # --- Bonifico ---
+    transfer_code = models.CharField(
+        max_length=12, blank=True, db_index=True, verbose_name='Codice bonifico',
+        help_text='Da cercare nella causale del bonifico',
+    )
+    transfer_chosen_at = models.DateTimeField(blank=True, null=True, verbose_name='Bonifico scelto il')
+    transfer_receipt = models.FileField(
+        upload_to=receipt_upload_to, storage=private_storage, blank=True,
+        verbose_name='Distinta bonifico',
+    )
+    receipt_uploaded_at = models.DateTimeField(blank=True, null=True, verbose_name='Distinta caricata il')
+    transfer_note = models.TextField(
+        blank=True, verbose_name="Nota per l'iscritto",
+        help_text="Motivo del rifiuto della distinta: viene inviato all'iscritto via email.",
+    )
 
     class Meta:
         ordering = ['-submitted_at']
@@ -183,13 +338,114 @@ class Registration(models.Model):
     def is_under_review(self):
         return self.payment_status == 'review'
 
+    @property
+    def is_bank_transfer(self):
+        return self.payment_status in ('transfer', 'transfer_review')
+
+    @property
+    def transfer_reference(self):
+        """Causale da indicare nel bonifico."""
+        return f'ISCR {self.transfer_code} {self.event.title}'[:140]
+
+    @property
+    def transfer_deadline(self):
+        if not self.transfer_chosen_at:
+            return None
+        return self.transfer_chosen_at + timedelta(days=BankTransferSettings.load().hold_days)
+
+    @property
+    def transfer_overdue(self):
+        deadline = self.transfer_deadline
+        return self.payment_status == 'transfer' and deadline is not None and timezone.now() > deadline
+
+    @property
+    def first_activity_date(self):
+        """Data della prima lezione scelta (o dell'evento)."""
+        dates = [o.date for o in self.options.all()]
+        return min(dates) if dates else self.event.date
+
+    def bank_transfer_allowed(self):
+        """Il bonifico si può scegliere solo se l'evento lo accetta, i dati
+        bancari sono configurati e c'è abbastanza tempo prima dell'inizio."""
+        if not self.event.accept_bank_transfer:
+            return False
+        bank = BankTransferSettings.load()
+        if not bank.is_configured:
+            return False
+        return timezone.now() + timedelta(days=bank.min_days_before) <= self.first_activity_date
+
+    def choose_bank_transfer(self):
+        if not self.transfer_code:
+            self.transfer_code = secrets.token_hex(3).upper()
+        self.payment_status = 'transfer'
+        self.transfer_chosen_at = timezone.now()
+        self.save(update_fields=['transfer_code', 'payment_status', 'transfer_chosen_at'])
+
 
 class RegistrationAnswer(models.Model):
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='answers')
     field = models.ForeignKey(RegistrationField, on_delete=models.SET_NULL, null=True)
     value = models.TextField(blank=True, verbose_name='Valore')
-    file = models.FileField(upload_to='registrations/', blank=True, null=True, verbose_name='File allegato')
+    # Privato come le distinte: certificati e documenti degli iscritti non
+    # devono essere raggiungibili da un URL pubblico.
+    file = models.FileField(
+        upload_to=attachment_upload_to, storage=private_storage,
+        blank=True, null=True, verbose_name='File allegato',
+    )
 
     def __str__(self):
         label = self.field.label if self.field else '?'
         return f'{label}: {self.value or "(file)"}'
+
+
+class BankTransferSettings(models.Model):
+    """Dati per il bonifico, unici per tutto il sito (modificabili dall'admin)."""
+    beneficiary = models.CharField(max_length=200, blank=True, verbose_name='Intestatario')
+    iban = models.CharField(max_length=40, blank=True, verbose_name='IBAN')
+    bank_name = models.CharField(max_length=200, blank=True, verbose_name='Banca')
+    hold_days = models.PositiveIntegerField(
+        default=5, verbose_name='Giorni per pagare',
+        help_text='Per quanti giorni il posto resta riservato a chi sceglie il bonifico.',
+    )
+    min_days_before = models.PositiveIntegerField(
+        default=3, verbose_name="Giorni minimi prima dell'inizio",
+        help_text='Se la prima lezione/evento è più vicina di così, il bonifico non viene proposto.',
+    )
+    notify_email = models.EmailField(
+        blank=True, verbose_name='Email per gli avvisi',
+        help_text='Riceve un avviso quando un iscritto carica la distinta. '
+                  'Vuoto = indirizzo contatti del sito.',
+    )
+    instructions = models.TextField(
+        blank=True, verbose_name='Istruzioni aggiuntive',
+        help_text='Testo facoltativo mostrato sotto i dati del bonifico.',
+    )
+
+    class Meta:
+        verbose_name = 'Dati per il bonifico'
+        verbose_name_plural = 'Dati per il bonifico'
+
+    def __str__(self):
+        return 'Dati per il bonifico'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        self.iban = self.iban.replace(' ', '').upper()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def is_configured(self):
+        return bool(self.iban and self.beneficiary)
+
+    @property
+    def iban_display(self):
+        return ' '.join(self.iban[i:i + 4] for i in range(0, len(self.iban), 4))
+
+    @property
+    def alert_email(self):
+        return self.notify_email or settings.CONTACT_EMAIL

@@ -1,0 +1,23 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .transfer-actions { justify-content: flex-start; }
+  .transfer-overdue { color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+{% if original.is_bank_transfer %}
+<div class="submit-row transfer-actions">
+  <input type="submit" name="_transfer_ok" class="default"
+         value="Bonifico ricevuto: conferma iscrizione">
+  {% if original.payment_status == "transfer_review" %}
+  <input type="submit" name="_transfer_reject"
+         value="Rifiuta distinta (invia la nota all'iscritto)">
+  {% endif %}
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

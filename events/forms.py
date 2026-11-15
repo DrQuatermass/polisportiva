@@ -1,4 +1,14 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
+
+ATTACHMENT_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024
+
+
+def validate_attachment_size(upload):
+    if upload.size > ATTACHMENT_MAX_SIZE:
+        raise ValidationError('Il file è troppo grande (massimo 10 MB).')
 
 
 def build_registration_form(event, data=None, files=None):
@@ -61,6 +71,10 @@ def build_registration_form(event, data=None, files=None):
             )
         elif rf.field_type == 'file':
             field = forms.FileField(
+                validators=[
+                    FileExtensionValidator(ATTACHMENT_EXTENSIONS),
+                    validate_attachment_size,
+                ],
                 widget=forms.ClearableFileInput(attrs={
                     'class': 'form-control',
                     'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx',
@@ -78,5 +92,27 @@ def build_registration_form(event, data=None, files=None):
         field.required = rf.required
         field_dict[field_name] = field
 
-    FormClass = type('RegistrationForm', (forms.BaseForm,), {'base_fields': field_dict})
+    attrs = {'base_fields': field_dict}
+
+    if event.has_options:
+        field_dict['reg_options'] = forms.ModelMultipleChoiceField(
+            queryset=event.options.all(),
+            label='Lezioni a cui iscriversi',
+            widget=forms.CheckboxSelectMultiple,
+            error_messages={'required': 'Seleziona almeno una lezione.'},
+        )
+
+        def clean_reg_options(self):
+            selected = self.cleaned_data['reg_options']
+            unavailable = [o for o in selected if not o.is_available]
+            if unavailable:
+                names = ', '.join(o.title for o in unavailable)
+                raise forms.ValidationError(
+                    f'Non più disponibili (posti esauriti o iscrizioni chiuse): {names}.'
+                )
+            return selected
+
+        attrs['clean_reg_options'] = clean_reg_options
+
+    FormClass = type('RegistrationForm', (forms.BaseForm,), attrs)
     return FormClass(data=data, files=files)
