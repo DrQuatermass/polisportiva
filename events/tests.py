@@ -545,3 +545,76 @@ class PrivateAttachmentTests(TestCase):
         self.client.force_login(user)
         url = reverse('admin:events_registration_attachment', args=[other.pk, answer.pk])
         self.assertEqual(self.client.get(url).status_code, 404)
+
+
+class OptionExtrasTests(TestCase):
+    """Voci extra (es. tessera) tra le lezioni: si sommano, fuori dal pacchetto."""
+
+    def setUp(self):
+        from decimal import Decimal
+        from .models import EventOption
+        now = timezone.now()
+        self.event = Event.objects.create(
+            title='Corso', slug='corso-extra', description='x', date=now + timedelta(days=10),
+            location='Carpi', published=True, registration_enabled=True, bundle_price=Decimal('120'),
+        )
+        self.lessons = [
+            EventOption.objects.create(event=self.event, title=f'L{i}', price=Decimal(p),
+                                       date=now + timedelta(days=10 + i), order=i)
+            for i, p in enumerate([20, 20, 25, 20, 20, 20])
+        ]
+        self.card = EventOption.objects.create(
+            event=self.event, title='Tessera ARCI 2026/27', price=Decimal('10'), is_extra=True, order=99,
+        )
+        self.url = reverse('event_register', args=[self.event.slug])
+
+    def _post(self, options):
+        return self.client.post(self.url, {'reg_email': 'a@example.test', 'reg_options': [o.pk for o in options]})
+
+    def _amount(self):
+        from .models import Registration
+        return Registration.objects.latest('submitted_at').amount_paid
+
+    def test_bundle_still_applies_with_card(self):
+        self._post(self.lessons + [self.card])
+        self.assertEqual(self._amount(), 130)
+
+    def test_bundle_without_card(self):
+        self._post(self.lessons)
+        self.assertEqual(self._amount(), 120)
+
+    def test_some_lessons_plus_card(self):
+        self._post(self.lessons[:2] + [self.card])
+        self.assertEqual(self._amount(), 50)
+
+    def test_card_alone_is_rejected(self):
+        from .models import Registration
+        response = self._post([self.card])
+        self.assertContains(response, 'Seleziona almeno una lezione')
+        self.assertFalse(Registration.objects.exists())
+
+    def test_extra_without_date_never_closes_and_bundle_ignores_it(self):
+        self.assertFalse(self.card.is_closed)
+        self.assertEqual(self.event.options_total_price, 125)
+        self.assertEqual(len(self.event.lessons), 6)
+        self.assertTrue(self.event.bundle_available)
+
+    def test_lesson_requires_date(self):
+        from django.core.exceptions import ValidationError
+        from .models import EventOption
+        with self.assertRaises(ValidationError):
+            EventOption(event=self.event, title='Senza data', price=10).full_clean()
+
+    def test_detail_shows_card_in_extras_section(self):
+        response = self.client.get(reverse('event_detail', args=[self.event.slug]))
+        self.assertContains(response, 'Da aggiungere')
+        self.assertContains(response, 'data-extra', count=1)
+        self.assertContains(response, 'Tutte e 6 le lezioni')
+
+    def test_payment_page_marks_bundle_and_lists_card(self):
+        from .models import Registration
+        self._post(self.lessons + [self.card])
+        reg = Registration.objects.get()
+        page = self.client.get(reverse('event_payment', args=[reg.id]))
+        self.assertContains(page, 'Prezzo pacchetto completo applicato')
+        self.assertContains(page, 'Tessera ARCI 2026/27')

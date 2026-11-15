@@ -135,7 +135,7 @@ class Event(models.Model):
             confirmed = self.registrations.filter(payment_status__in=CONFIRMED_STATUSES).count()
             if confirmed >= self.max_registrations:
                 return False
-        if self.has_options and not any(o.is_available for o in self.options.all()):
+        if self.has_options and not any(o.is_available for o in self.lessons):
             return False
         return True
 
@@ -154,31 +154,42 @@ class Event(models.Model):
         return self.registration_price > 0
 
     @property
+    def lessons(self):
+        """Opzioni che sono lezioni (escluse le voci extra come la tessera)."""
+        return [o for o in self.options.all() if not o.is_extra]
+
+    @property
+    def extras(self):
+        return [o for o in self.options.all() if o.is_extra]
+
+    @property
     def options_total_price(self):
-        return sum((o.price for o in self.options.all()), Decimal('0'))
+        """Somma delle sole lezioni (base del confronto col prezzo pacchetto)."""
+        return sum((o.price for o in self.lessons), Decimal('0'))
 
     @property
     def bundle_available(self):
-        """Il pacchetto completo è acquistabile solo se tutte le opzioni lo sono."""
-        options = list(self.options.all())
-        return bool(options) and self.bundle_price is not None and all(o.is_available for o in options)
+        """Il pacchetto completo è acquistabile solo se tutte le lezioni lo sono."""
+        lessons = self.lessons
+        return bool(lessons) and self.bundle_price is not None and all(o.is_available for o in lessons)
 
     @property
     def min_price(self):
-        if self.has_options:
-            return min(o.price for o in self.options.all())
-        return self.registration_price
+        prices = [o.price for o in (self.lessons or self.options.all())]
+        return min(prices) if prices else self.registration_price
 
     def compute_total(self, selected_options):
         """Totale da pagare per le opzioni scelte (calcolato sempre lato server).
-        Se sono scelte tutte le opzioni e c'è un prezzo pacchetto, si applica
-        quello (mai più della somma delle singole)."""
+        Se sono scelte tutte le lezioni e c'è un prezzo pacchetto, si applica
+        quello (mai più della somma delle singole); le voci extra si sommano."""
         selected = list(selected_options)
-        total = sum((o.price for o in selected), Decimal('0'))
-        all_ids = set(self.options.values_list('pk', flat=True))
-        if self.bundle_price is not None and all_ids and {o.pk for o in selected} == all_ids:
+        lessons = [o for o in selected if not o.is_extra]
+        extras = [o for o in selected if o.is_extra]
+        total = sum((o.price for o in lessons), Decimal('0'))
+        all_ids = {o.pk for o in self.lessons}
+        if self.bundle_price is not None and all_ids and {o.pk for o in lessons} == all_ids:
             total = min(total, self.bundle_price)
-        return total
+        return total + sum((o.price for o in extras), Decimal('0'))
 
 
 class EventImage(models.Model):
@@ -206,7 +217,15 @@ class EventOption(models.Model):
     nel form di iscrizione, con prezzo e posti propri."""
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='options')
     title = models.CharField(max_length=200, verbose_name='Titolo')
-    date = models.DateTimeField(verbose_name='Data e ora')
+    is_extra = models.BooleanField(
+        default=False, verbose_name='Extra',
+        help_text='Non è una lezione (es. tessera, maglietta): si aggiunge al totale, '
+                  'non conta per il prezzo pacchetto e non si può scegliere da sola.',
+    )
+    date = models.DateTimeField(
+        blank=True, null=True, verbose_name='Data e ora',
+        help_text='Obbligatoria per le lezioni; facoltativa per gli extra.',
+    )
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name='Prezzo (EUR)')
     max_participants = models.PositiveIntegerField(
         blank=True, null=True, verbose_name='Posti max',
@@ -224,7 +243,14 @@ class EventOption(models.Model):
         verbose_name_plural = 'Lezioni / opzioni'
 
     def __str__(self):
-        return f'{self.event} – {self.date:%d/%m} {self.title}'
+        if self.date:
+            return f'{self.event} – {timezone.localtime(self.date):%d/%m} {self.title}'
+        return f'{self.event} – {self.title}'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if not self.is_extra and not self.date:
+            raise ValidationError({'date': 'Indica data e ora della lezione.'})
 
     @property
     def participants_count(self):
@@ -236,7 +262,8 @@ class EventOption(models.Model):
 
     @property
     def is_closed(self):
-        return timezone.now() >= (self.registration_deadline or self.date)
+        closes_at = self.registration_deadline or self.date
+        return closes_at is not None and timezone.now() >= closes_at
 
     @property
     def is_available(self):
@@ -339,6 +366,15 @@ class Registration(models.Model):
         return self.payment_status == 'review'
 
     @property
+    def bundle_applied(self):
+        """True se sono state scelte tutte le lezioni con lo sconto pacchetto."""
+        event = self.event
+        lessons = {o.pk for o in event.lessons}
+        chosen = {o.pk for o in self.options.all() if not o.is_extra}
+        return (event.bundle_price is not None and bool(lessons) and chosen == lessons
+                and event.bundle_price < event.options_total_price)
+
+    @property
     def is_bank_transfer(self):
         return self.payment_status in ('transfer', 'transfer_review')
 
@@ -361,7 +397,7 @@ class Registration(models.Model):
     @property
     def first_activity_date(self):
         """Data della prima lezione scelta (o dell'evento)."""
-        dates = [o.date for o in self.options.all()]
+        dates = [o.date for o in self.options.all() if o.date and not o.is_extra]
         return min(dates) if dates else self.event.date
 
     def bank_transfer_allowed(self):
