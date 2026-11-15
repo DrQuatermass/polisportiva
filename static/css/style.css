@@ -529,6 +529,104 @@
   object-fit: contain;
 }
 
+/* ── Lezioni selezionabili (iscrizione evento) ───────── */
+.event-options {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.event-option {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: var(--white);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.event-option:hover {
+  border-color: var(--red);
+}
+
+.event-option:has(input:checked) {
+  border-color: var(--red);
+  background: #fef2f2;
+}
+
+.event-option:has(input:focus-visible) {
+  outline: 3px solid rgba(220, 38, 38, 0.45);
+  outline-offset: 2px;
+}
+
+.event-option.is-disabled {
+  cursor: not-allowed;
+  background: var(--gray-light);
+  color: #6b7280;
+}
+
+.event-option.is-disabled:hover {
+  border-color: #e5e7eb;
+}
+
+.event-option-input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--red);
+}
+
+.event-option-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.event-option-date {
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.event-option-title {
+  font-weight: 600;
+}
+
+.event-option-status {
+  font-size: 0.8rem;
+  color: #b45309;
+}
+
+.event-option-price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.event-options-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--gray-light);
+}
+
+.event-options-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.event-options-bundle-note {
+  font-size: 0.9rem;
+}
+
 @media (max-width: 767.98px) {
   .calendar-toolbar {
     gap: 0.5rem;

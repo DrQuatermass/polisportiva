@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static l10n %}
 
 {% block title %}{{ event.title }} — Polisportiva Sanmarinese{% endblock %}
 {% block meta_description %}{{ event.get_meta_description }}{% endblock %}
@@ -43,7 +43,7 @@
   "offers": {
     "@type": "Offer",
     "url": "{{ CANONICAL_URL }}",
-    "price": "{{ event.registration_price }}",
+    "price": "{{ event.min_price|unlocalize }}",
     "priceCurrency": "EUR",
     "availability": "https://schema.org/InStock",
     "validFrom": "{{ event.date|date:'c' }}"
@@ -176,7 +176,11 @@
             {% if event.registration_deadline %}
             <span><i class="bi bi-calendar-x me-1"></i>Scadenza: {{ event.registration_deadline|date:"d/m/Y H:i" }}</span>
             {% endif %}
+            {% if event.has_options %}
             {% if event.is_paid %}
+            <span class="fw-semibold text-dark"><i class="bi bi-credit-card me-1"></i>Da € {{ event.min_price|floatformat:"-2" }} a lezione</span>
+            {% endif %}
+            {% elif event.is_paid %}
             <span class="fw-semibold text-dark"><i class="bi bi-credit-card me-1"></i>Quota: € {{ event.registration_price }}</span>
             {% else %}
             <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Iscrizione gratuita</span>
@@ -198,8 +202,62 @@
               {% if reg_form.reg_email.errors %}<div class="invalid-feedback d-block">{{ reg_form.reg_email.errors.0 }}</div>{% endif %}
             </div>
 
+            {% if event.has_options %}
+            {% with options=event.options.all selected=reg_form.reg_options.value %}
+            <fieldset class="event-options" data-event-options
+                      {% if event.bundle_price is not None %}data-bundle-price="{{ event.bundle_price|unlocalize }}"{% endif %}
+                      data-options-count="{{ options|length }}">
+              <legend class="form-label fw-semibold fs-6">
+                Lezioni a cui iscriversi <span class="text-danger">*</span>
+              </legend>
+              <p class="form-text mt-0 mb-2">Seleziona una o più lezioni.</p>
+
+              {% for option in options %}
+              <label class="event-option{% if not option.is_available %} is-disabled{% endif %}">
+                <input type="checkbox" class="event-option-input" name="reg_options"
+                       value="{{ option.pk }}" data-price="{{ option.price|unlocalize }}"
+                       {% if reg_form.is_bound and option.pk|stringformat:"s" in selected %}checked{% endif %}
+                       {% if not option.is_available %}disabled{% endif %}>
+                <span class="event-option-body">
+                  <span class="event-option-date">{{ option.date|date:"l d F, H:i" }}</span>
+                  <span class="event-option-title">{{ option.title }}</span>
+                  {% if option.is_full %}
+                  <span class="event-option-status">Posti esauriti</span>
+                  {% elif option.is_closed %}
+                  <span class="event-option-status">Iscrizioni chiuse</span>
+                  {% elif option.places_left is not None and option.places_left <= 3 %}
+                  <span class="event-option-status">Ultim{{ option.places_left|pluralize:"o,i" }} {{ option.places_left }} post{{ option.places_left|pluralize:"o,i" }}</span>
+                  {% endif %}
+                </span>
+                <span class="event-option-price">€ {{ option.price|floatformat:"-2" }}</span>
+              </label>
+              {% endfor %}
+
+              {% if reg_form.reg_options.errors %}<div class="invalid-feedback d-block mb-2">{{ reg_form.reg_options.errors.0 }}</div>{% endif %}
+
+              {% if event.bundle_available %}
+              <div class="d-flex flex-wrap align-items-center gap-2 my-3">
+                <button type="button" class="btn btn-outline-danger btn-sm" data-select-all-options>
+                  <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Seleziona tutte
+                </button>
+                <span class="event-options-bundle-note text-muted">
+                  Tutte e {{ options|length }} le lezioni:
+                  {% if event.bundle_price < event.options_total_price %}<s>€ {{ event.options_total_price|floatformat:"-2" }}</s>{% endif %}
+                  <strong class="text-dark">€ {{ event.bundle_price|floatformat:"-2" }}</strong>
+                </span>
+              </div>
+              {% endif %}
+
+              <div class="event-options-summary" aria-live="polite">
+                <span><span data-options-count-label>Nessuna lezione selezionata</span></span>
+                <span>Totale: <span class="event-options-total">€ <span data-options-total>0</span></span></span>
+              </div>
+            </fieldset>
+            {% endwith %}
+            {% endif %}
+
             {% for field in reg_form %}
-              {% if field.html_name != "reg_email" %}
+              {% if field.html_name != "reg_email" and field.html_name != "reg_options" %}
               <div class="mb-3">
                 {% if field.field.widget.input_type == "checkbox" %}
                 <div class="form-check">
@@ -231,7 +289,11 @@
             {% endfor %}
 
             <div class="mt-4">
-              {% if event.is_paid %}
+              {% if event.has_options and event.is_paid %}
+              <button type="submit" class="btn btn-danger btn-lg px-5">
+                <i class="bi bi-arrow-right-circle me-2"></i>Continua al pagamento<span data-submit-total></span>
+              </button>
+              {% elif event.is_paid %}
               <button type="submit" class="btn btn-danger btn-lg px-5">
                 <i class="bi bi-arrow-right-circle me-2"></i>Continua al pagamento — € {{ event.registration_price }}
               </button>
@@ -269,6 +331,63 @@
 
 {% block extra_scripts %}
 {{ block.super }}
+<script>
+// Lezioni selezionabili: totale indicativo in tempo reale.
+// L'importo effettivo è sempre ricalcolato dal server.
+document.addEventListener('DOMContentLoaded', function () {
+  const fieldset = document.querySelector('[data-event-options]');
+  if (!fieldset) {
+    return;
+  }
+  const inputs = Array.from(fieldset.querySelectorAll('input[name="reg_options"]'));
+  const totalEl = fieldset.querySelector('[data-options-total]');
+  const countEl = fieldset.querySelector('[data-options-count-label]');
+  const submitTotalEl = document.querySelector('[data-submit-total]');
+  const selectAllBtn = fieldset.querySelector('[data-select-all-options]');
+  const optionsCount = parseInt(fieldset.dataset.optionsCount, 10);
+  const bundle = fieldset.dataset.bundlePrice !== undefined ? parseFloat(fieldset.dataset.bundlePrice) : null;
+  const fmt = function (n) {
+    return n.toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  };
+
+  function update() {
+    const checked = inputs.filter(function (i) { return i.checked; });
+    let total = checked.reduce(function (sum, i) { return sum + parseFloat(i.dataset.price); }, 0);
+    const allChosen = checked.length === optionsCount;
+    if (allChosen && bundle !== null) {
+      total = Math.min(total, bundle);
+    }
+    totalEl.textContent = fmt(total);
+    if (checked.length === 0) {
+      countEl.textContent = 'Nessuna lezione selezionata';
+    } else if (allChosen && bundle !== null) {
+      countEl.textContent = 'Tutte le lezioni (pacchetto completo)';
+    } else {
+      countEl.textContent = checked.length === 1 ? '1 lezione selezionata' : checked.length + ' lezioni selezionate';
+    }
+    if (submitTotalEl) {
+      submitTotalEl.textContent = checked.length ? ' — € ' + fmt(total) : '';
+    }
+    if (selectAllBtn) {
+      const allEnabledChecked = inputs.every(function (i) { return i.disabled || i.checked; });
+      selectAllBtn.innerHTML = allEnabledChecked
+        ? '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>Deseleziona tutte'
+        : '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>Seleziona tutte';
+    }
+  }
+
+  inputs.forEach(function (i) { i.addEventListener('change', update); });
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', function () {
+      const enabled = inputs.filter(function (i) { return !i.disabled; });
+      const target = !enabled.every(function (i) { return i.checked; });
+      enabled.forEach(function (i) { i.checked = target; });
+      update();
+    });
+  }
+  update();
+});
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const modalElement = document.getElementById('eventGalleryModal');

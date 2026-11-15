@@ -33,10 +33,23 @@
             <span class="text-muted">Evento</span>
             <span class="fw-semibold">{{ registration.event.title }}</span>
           </div>
+          {% with options=registration.options.all %}
+          {% if options %}
+          <div class="mb-2">
+            <span class="text-muted d-block mb-1">Lezioni</span>
+            <ul class="list-unstyled mb-0">
+              {% for option in options %}
+              <li>{{ option.date|date:"l d/m/Y H:i" }} — <strong>{{ option.title }}</strong></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% else %}
           <div class="d-flex justify-content-between mb-2">
             <span class="text-muted">Data</span>
             <span>{{ registration.event.date|date:"d/m/Y H:i" }}</span>
           </div>
+          {% endif %}
+          {% endwith %}
           <div class="d-flex justify-content-between mb-2">
             <span class="text-muted">Luogo</span>
             <span>{{ registration.event.location }}</span>

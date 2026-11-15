@@ -78,5 +78,27 @@ def build_registration_form(event, data=None, files=None):
         field.required = rf.required
         field_dict[field_name] = field
 
-    FormClass = type('RegistrationForm', (forms.BaseForm,), {'base_fields': field_dict})
+    attrs = {'base_fields': field_dict}
+
+    if event.has_options:
+        field_dict['reg_options'] = forms.ModelMultipleChoiceField(
+            queryset=event.options.all(),
+            label='Lezioni a cui iscriversi',
+            widget=forms.CheckboxSelectMultiple,
+            error_messages={'required': 'Seleziona almeno una lezione.'},
+        )
+
+        def clean_reg_options(self):
+            selected = self.cleaned_data['reg_options']
+            unavailable = [o for o in selected if not o.is_available]
+            if unavailable:
+                names = ', '.join(o.title for o in unavailable)
+                raise forms.ValidationError(
+                    f'Non più disponibili (posti esauriti o iscrizioni chiuse): {names}.'
+                )
+            return selected
+
+        attrs['clean_reg_options'] = clean_reg_options
+
+    FormClass = type('RegistrationForm', (forms.BaseForm,), attrs)
     return FormClass(data=data, files=files)

@@ -144,3 +144,133 @@ class EventSeoTests(TestCase):
         self.assertEqual(response['Content-Type'], 'image/jpeg')
         self.assertEqual(response.content[:3], b'\xff\xd8\xff')
         self.assertIn('public', response['Cache-Control'])
+
+
+class EventOptionsTests(TestCase):
+    """Eventi a lezioni selezionabili (es. corso di cucina) con prezzo pacchetto."""
+
+    def setUp(self):
+        from decimal import Decimal
+        from .models import EventOption, RegistrationField
+        now = timezone.now()
+        self.event = Event.objects.create(
+            title='Corso di cucina', slug='corso-cucina', description='Corso',
+            date=now + timedelta(days=10), location='Carpi', published=True,
+            registration_enabled=True, bundle_price=Decimal('120'),
+        )
+        prices = [20, 20, 25, 20, 20, 20]
+        self.options = [
+            EventOption.objects.create(
+                event=self.event, title=f'Lezione {i + 1}', price=Decimal(p),
+                date=now + timedelta(days=10 + 7 * i), order=i, max_participants=2,
+            )
+            for i, p in enumerate(prices)
+        ]
+        self.name_field = RegistrationField.objects.create(
+            event=self.event, field_type='text', label='Nome', required=True,
+        )
+        self.url = reverse('event_register', args=[self.event.slug])
+
+    def _post(self, options, email='a@example.test'):
+        return self.client.post(self.url, {
+            'reg_email': email,
+            f'field_{self.name_field.pk}': 'Mario',
+            'reg_options': [o.pk for o in options],
+        })
+
+    def _last_registration(self):
+        from .models import Registration
+        return Registration.objects.latest('submitted_at')
+
+    def test_partial_selection_sums_prices(self):
+        response = self._post(self.options[:3])
+        reg = self._last_registration()
+        self.assertRedirects(response, reverse('event_payment', args=[reg.id]), fetch_redirect_response=False)
+        self.assertEqual(reg.amount_paid, 65)
+        self.assertEqual(reg.payment_status, 'pending')
+        self.assertEqual(set(reg.options.all()), set(self.options[:3]))
+
+    def test_all_options_use_bundle_price(self):
+        self._post(self.options)
+        self.assertEqual(self._last_registration().amount_paid, 120)
+
+    def test_bundle_never_exceeds_sum(self):
+        from decimal import Decimal
+        self.event.bundle_price = Decimal('500')
+        self.event.save()
+        self._post(self.options)
+        self.assertEqual(self._last_registration().amount_paid, 125)
+
+    def test_no_selection_is_rejected(self):
+        from .models import Registration
+        response = self._post([])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Seleziona almeno una lezione')
+        self.assertFalse(Registration.objects.exists())
+
+    def test_full_option_is_rejected(self):
+        from .models import Registration
+        for email in ['x@example.test', 'y@example.test']:
+            reg = Registration.objects.create(event=self.event, email=email, payment_status='completed')
+            reg.options.set([self.options[0]])
+        self.assertTrue(self.options[0].is_full)
+
+        response = self._post([self.options[0], self.options[1]])
+        self.assertContains(response, 'Non più disponibili')
+        self.assertEqual(Registration.objects.count(), 2)
+
+    def test_pending_registrations_do_not_take_seats(self):
+        from .models import Registration
+        for email in ['x@example.test', 'y@example.test']:
+            reg = Registration.objects.create(event=self.event, email=email, payment_status='pending')
+            reg.options.set([self.options[0]])
+        self.assertFalse(self.options[0].is_full)
+
+    def test_closed_option_is_rejected_and_disables_bundle(self):
+        self.options[0].date = timezone.now() - timedelta(hours=1)
+        self.options[0].save()
+        self.assertFalse(self.event.bundle_available)
+        response = self._post([self.options[0]])
+        self.assertContains(response, 'Non più disponibili')
+
+    def test_option_from_other_event_is_rejected(self):
+        from .models import EventOption, Registration
+        other = Event.objects.create(
+            title='Altro', slug='altro', description='x', date=timezone.now() + timedelta(days=3),
+            location='Carpi', published=True, registration_enabled=True,
+        )
+        foreign = EventOption.objects.create(
+            event=other, title='Estranea', price=1, date=timezone.now() + timedelta(days=3),
+        )
+        self._post([foreign])
+        self.assertFalse(Registration.objects.exists())
+
+    def test_detail_renders_options_and_bundle(self):
+        response = self.client.get(reverse('event_detail', args=[self.event.slug]))
+        self.assertContains(response, 'class="event-option-input"', count=6)
+        self.assertContains(response, 'data-bundle-price="120.00"')
+        self.assertContains(response, 'Seleziona tutte')
+
+    def test_free_options_skip_payment(self):
+        from .models import Registration
+        for o in self.options:
+            o.price = 0
+            o.save()
+        self.event.bundle_price = None
+        self.event.save()
+        response = self._post(self.options[:1])
+        reg = Registration.objects.get()
+        self.assertEqual(reg.payment_status, 'free')
+        self.assertRedirects(response, reverse('event_registration_confirm', args=[reg.id]), fetch_redirect_response=False)
+
+    def test_admin_csv_export_lists_options(self):
+        from .admin import RegistrationAdmin
+        from .models import Registration
+        self._post(self.options[:2])
+        admin = RegistrationAdmin(Registration, AdminSite())
+        response = admin.export_csv(None, Registration.objects.all())
+        content = response.content.decode('utf-8-sig')
+        self.assertIn('Lezione 1', content)
+        self.assertIn('Lezione 2', content)
+        self.assertIn('Mario', content)
+        self.assertIn('40', content)

@@ -89,8 +89,17 @@ def _send_confirmation_email(registration):
         f'Ciao,\n\n'
         f'la tua iscrizione all\'evento "{event.title}" è stata ricevuta con successo.\n'
     )
-    if event.date:
+    options = list(registration.options.all())
+    if options:
+        body += '\nLezioni scelte:\n'
+        for option in options:
+            local_date = timezone.localtime(option.date)
+            body += f'  - {local_date.strftime("%d/%m/%Y %H:%M")} {option.title}\n'
+        body += '\n'
+    elif event.date:
         body += f'Data evento: {event.date.strftime("%d/%m/%Y %H:%M")}\n'
+    if registration.amount_paid:
+        body += f'Importo: € {registration.amount_paid}\n'
     if payment_note:
         body += f'{payment_note}\n'
     body += (
@@ -160,13 +169,20 @@ def event_register(request, slug):
     form = build_registration_form(event, data=request.POST, files=request.FILES)
     if form.is_valid():
         email = form.cleaned_data['reg_email']
-        status = 'pending' if event.is_paid else 'free'
+        selected_options = list(form.cleaned_data.get('reg_options') or [])
+        if selected_options:
+            amount = event.compute_total(selected_options)
+        else:
+            amount = event.registration_price
+        status = 'pending' if amount > 0 else 'free'
         registration = Registration.objects.create(
             event=event,
             email=email,
             payment_status=status,
-            amount_paid=event.registration_price,
+            amount_paid=amount,
         )
+        if selected_options:
+            registration.options.set(selected_options)
         for rf in event.fields.all():
             field_name = f'field_{rf.pk}'
             if field_name not in form.cleaned_data:
@@ -183,7 +199,7 @@ def event_register(request, slug):
                 answer.value = str(value) if value else ''
             answer.save()
 
-        if event.is_paid:
+        if status == 'pending':
             return redirect('event_payment', registration_id=registration.id)
 
         # Iscrizione gratuita: manda subito la conferma
@@ -243,6 +259,16 @@ def paypal_start(request, registration_id):
     """Crea l'ordine PayPal e reindirizza l'utente alla pagina di pagamento di
     PayPal (flusso a redirect: nessun popup, nessun JS SDK)."""
     registration = get_object_or_404(Registration, id=registration_id, payment_status='pending')
+
+    # Tra iscrizione e pagamento una lezione può essersi riempita o chiusa.
+    unavailable = [o.title for o in registration.options.all() if not o.is_available]
+    if unavailable:
+        return _payment_error_page(
+            request, registration,
+            'Nel frattempo queste lezioni non sono più disponibili: '
+            f'{", ".join(unavailable)}. Torna alla pagina dell\'evento e ripeti l\'iscrizione.',
+        )
+
     try:
         token, base = _get_paypal_token()
         amount_value = f'{registration.amount_paid:.2f}'

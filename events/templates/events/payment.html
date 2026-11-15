@@ -25,6 +25,23 @@
             <span class="text-muted">Email</span>
             <span>{{ registration.email }}</span>
           </div>
+          {% with options=registration.options.all %}
+          {% if options %}
+          <hr>
+          <p class="text-muted mb-2">Lezioni scelte</p>
+          <ul class="list-unstyled mb-0">
+            {% for option in options %}
+            <li class="d-flex justify-content-between mb-1">
+              <span>{{ option.date|date:"d/m" }} — {{ option.title }}</span>
+              <span>€ {{ option.price|floatformat:"-2" }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if registration.event.bundle_price is not None and options|length == registration.event.options.count and registration.amount_paid < registration.event.options_total_price %}
+          <p class="small text-success mb-0 mt-1"><i class="bi bi-tag me-1"></i>Prezzo pacchetto completo applicato</p>
+          {% endif %}
+          {% endif %}
+          {% endwith %}
           <hr>
           <div class="d-flex justify-content-between fw-bold fs-5">
             <span>Totale</span>
