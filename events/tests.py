@@ -465,3 +465,83 @@ class BankTransferTests(TestCase):
     def test_payment_page_is_never_cached(self):
         response = self.client.get(reverse('event_payment', args=[self.reg.id]))
         self.assertIn('no-store', response['Cache-Control'])
+
+
+class PrivateAttachmentTests(TestCase):
+    """Gli allegati del modulo di iscrizione non devono essere pubblici."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        from .models import RegistrationField
+
+        self.private_dir = tempfile.mkdtemp()
+        self.media_dir = tempfile.mkdtemp()
+        for d in (self.private_dir, self.media_dir):
+            self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        override = override_settings(PRIVATE_MEDIA_ROOT=self.private_dir, MEDIA_ROOT=self.media_dir)
+        override.enable()
+        self.addCleanup(override.disable)
+
+        self.event = Event.objects.create(
+            title='Gara', slug='gara', description='x', date=timezone.now() + timedelta(days=5),
+            location='Carpi', published=True, registration_enabled=True,
+        )
+        self.field = RegistrationField.objects.create(
+            event=self.event, field_type='file', label='Certificato medico', required=True,
+        )
+        self.url = reverse('event_register', args=[self.event.slug])
+
+    def _upload(self, name='certificato.pdf', content=b'%PDF-1.4 cert'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return self.client.post(self.url, {
+            'reg_email': 'a@example.test',
+            f'field_{self.field.pk}': SimpleUploadedFile(name, content),
+        })
+
+    def test_attachment_saved_privately_with_random_name(self):
+        import os
+        from .models import RegistrationAnswer
+        self._upload()
+        answer = RegistrationAnswer.objects.get()
+        self.assertTrue(answer.file.path.startswith(os.path.abspath(self.private_dir)))
+        self.assertNotIn('certificato', answer.file.name)
+        self.assertEqual(os.listdir(self.media_dir), [])
+        with self.assertRaises(ValueError):
+            answer.file.url
+
+    def test_disallowed_extension_rejected(self):
+        from .models import Registration
+        response = self._upload(name='script.exe')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Registration.objects.exists())
+
+    def test_admin_attachment_requires_login(self):
+        from django.contrib.auth import get_user_model
+        from .models import RegistrationAnswer
+        self._upload()
+        answer = RegistrationAnswer.objects.get()
+        url = reverse('admin:events_registration_attachment', args=[answer.registration_id, answer.pk])
+        self.assertEqual(self.client.get(url).status_code, 302)
+
+        user = get_user_model().objects.create_superuser('admin', 'adm@example.test', 'pw')
+        self.client.force_login(user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b''.join(response.streaming_content), b'%PDF-1.4 cert')
+        self.assertIn('certificato-medico-', response['Content-Disposition'])
+
+        page = self.client.get(reverse('admin:events_registration_change', args=[answer.registration_id]))
+        self.assertContains(page, 'Apri allegato')
+        self.assertNotContains(page, answer.file.name)
+
+    def test_attachment_of_other_registration_is_404(self):
+        from django.contrib.auth import get_user_model
+        from .models import Registration, RegistrationAnswer
+        self._upload()
+        answer = RegistrationAnswer.objects.get()
+        other = Registration.objects.create(event=self.event, email='b@example.test')
+        user = get_user_model().objects.create_superuser('admin', 'adm@example.test', 'pw')
+        self.client.force_login(user)
+        url = reverse('admin:events_registration_attachment', args=[other.pk, answer.pk])
+        self.assertEqual(self.client.get(url).status_code, 404)

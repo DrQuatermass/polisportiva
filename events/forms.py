@@ -1,4 +1,14 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
+
+ATTACHMENT_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024
+
+
+def validate_attachment_size(upload):
+    if upload.size > ATTACHMENT_MAX_SIZE:
+        raise ValidationError('Il file è troppo grande (massimo 10 MB).')
 
 
 def build_registration_form(event, data=None, files=None):
@@ -61,6 +71,10 @@ def build_registration_form(event, data=None, files=None):
             )
         elif rf.field_type == 'file':
             field = forms.FileField(
+                validators=[
+                    FileExtensionValidator(ATTACHMENT_EXTENSIONS),
+                    validate_attachment_size,
+                ],
                 widget=forms.ClearableFileInput(attrs={
                     'class': 'form-control',
                     'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx',

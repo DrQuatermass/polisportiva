@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirec
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.text import slugify
 from ckeditor.widgets import CKEditorWidget
 
 from .emails import send_confirmation_email, send_receipt_rejected
@@ -74,13 +75,21 @@ class EventImageInline(admin.TabularInline):
 class RegistrationAnswerInline(admin.TabularInline):
     model = RegistrationAnswer
     extra = 0
-    readonly_fields = ['field_label', 'value', 'file']
-    fields = ['field_label', 'value', 'file']
+    readonly_fields = ['field_label', 'value', 'allegato']
+    fields = ['field_label', 'value', 'allegato']
     can_delete = False
 
     def field_label(self, obj):
         return obj.field.label if obj.field else '-'
     field_label.short_description = 'Campo'
+
+    def allegato(self, obj):
+        # Il file è privato: si apre solo tramite la vista admin protetta.
+        if not obj.pk or not obj.file:
+            return '-'
+        url = reverse('admin:events_registration_attachment', args=[obj.registration_id, obj.pk])
+        return format_html('<a href="{}" target="_blank" rel="noopener">Apri allegato</a>', url)
+    allegato.short_description = 'Allegato'
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -201,8 +210,25 @@ class RegistrationAdmin(admin.ModelAdmin):
             path('<uuid:registration_id>/distinta/',
                  self.admin_site.admin_view(self.receipt_view),
                  name='events_registration_receipt'),
+            path('<uuid:registration_id>/allegato/<int:answer_id>/',
+                 self.admin_site.admin_view(self.attachment_view),
+                 name='events_registration_attachment'),
         ]
         return custom + super().get_urls()
+
+    def attachment_view(self, request, registration_id, answer_id):
+        registration = self.get_object(request, str(registration_id))
+        if registration is None or not self.has_view_permission(request, registration):
+            raise Http404
+        answer = registration.answers.filter(pk=answer_id).select_related('field').first()
+        if answer is None or not answer.file or not answer.file.storage.exists(answer.file.name):
+            raise Http404
+        label = slugify(answer.field.label) if answer.field else 'allegato'
+        ext = answer.file.name.rsplit('.', 1)[-1].lower() if '.' in answer.file.name else 'bin'
+        return FileResponse(
+            answer.file.open('rb'),
+            filename=f'{label or "allegato"}-{str(registration.pk)[:8]}.{ext}',
+        )
 
     def receipt_view(self, request, registration_id):
         registration = self.get_object(request, str(registration_id))
@@ -321,7 +347,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             answers = {}
             for answer in reg.answers.all():
                 label = answer.field.label if answer.field else '?'
-                answers[label] = answer.value or (answer.file.name if answer.file else '')
+                answers[label] = answer.value or ('(allegato, vedi admin)' if answer.file else '')
             writer.writerow([
                 reg.event.title,
                 timezone.localtime(reg.submitted_at).strftime('%d/%m/%Y %H:%M'),

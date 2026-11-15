@@ -40,6 +40,11 @@ def private_storage():
     return PrivateStorage()
 
 
+def attachment_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f'allegati/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}'
+
+
 def receipt_upload_to(instance, filename):
     ext = os.path.splitext(filename)[1].lower()
     return f'distinte/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}'
@@ -381,7 +386,12 @@ class RegistrationAnswer(models.Model):
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='answers')
     field = models.ForeignKey(RegistrationField, on_delete=models.SET_NULL, null=True)
     value = models.TextField(blank=True, verbose_name='Valore')
-    file = models.FileField(upload_to='registrations/', blank=True, null=True, verbose_name='File allegato')
+    # Privato come le distinte: certificati e documenti degli iscritti non
+    # devono essere raggiungibili da un URL pubblico.
+    file = models.FileField(
+        upload_to=attachment_upload_to, storage=private_storage,
+        blank=True, null=True, verbose_name='File allegato',
+    )
 
     def __str__(self):
         label = self.field.label if self.field else '?'
